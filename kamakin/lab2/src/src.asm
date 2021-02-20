@@ -141,11 +141,11 @@ Enviroment_strings_end:
     cmp     al, 0h
     jne     Enviroment_strings_start
     mov byte ptr es:[di], 0Dh
-	mov byte ptr es:[di+1], '$'
+    mov byte ptr es:[di+1], '$'
     add     si, 2h
-	mov     bx, ds
-	mov     ax, es
-	mov     ds, ax
+    mov     bx, ds
+    mov     ax, es
+    mov     ds, ax
     ret
 ENVIROMENT ENDP
 
@@ -161,10 +161,10 @@ Path_loop:
     jmp     Path_loop
 Path_loop_end:    
     mov byte ptr es:[di], 0Dh
-	mov byte ptr es:[di+1], '$'
-	mov     bx, ds
-	mov     ax, es
-	mov     ds, ax
+    mov byte ptr es:[di+1], '$'
+    mov     bx, ds
+    mov     ax, es
+    mov     ds, ax
     ret
 MODULE_PATH ENDP
     
