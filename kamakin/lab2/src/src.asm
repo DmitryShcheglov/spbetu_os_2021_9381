@@ -17,7 +17,7 @@ StringEnviromentArea db 128 DUP('$')
 ; converting a tetrad from AL to hex (result in AL)
 TETR_TO_HEX PROC NEAR
     and     al, 0Fh
-    cmp	    al, 09
+    cmp     al, 09
     jbe     Next
     add     al, 07
 Next:
