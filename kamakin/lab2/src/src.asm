@@ -140,8 +140,8 @@ Enviroment_strings_end:
     lodsb
     cmp     al, 0h
     jne     Enviroment_strings_start
-    mov byte ptr es:[di], 0Dh
-    mov byte ptr es:[di+1], '$'
+    mov     byte ptr es:[di], 0Dh
+    mov     byte ptr es:[di+1], '$'
     add     si, 2h
     mov     bx, ds
     mov     ax, es
@@ -156,12 +156,12 @@ MODULE_PATH PROC near
 Path_loop:
     lodsb
     cmp     al, 0h
-    je     Path_loop_end
+    je      Path_loop_end
     stosb
     jmp     Path_loop
 Path_loop_end:    
-    mov byte ptr es:[di], 0Dh
-    mov byte ptr es:[di+1], '$'
+    mov     byte ptr es:[di], 0Dh
+    mov     byte ptr es:[di+1], '$'
     mov     bx, ds
     mov     ax, es
     mov     ds, ax
