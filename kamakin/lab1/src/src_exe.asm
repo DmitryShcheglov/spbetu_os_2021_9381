@@ -5,11 +5,11 @@ DOSSEG
 .data
 StringType       db      'Machine type: ', '$'
 StringSystemVer  db      'System version:  .  ', 0DH, 0AH, '$'
-StringOEM        db      'OEM:  ', 0DH, 0AH, '$'
+StringOEM        db      'OEM:   ', 0DH, 0AH, '$'
 StringUser       db      'User serial number:       ', 0DH, 0AH, '$'
 
 TypeAT           db      'AT', 0DH, 0AH, '$'
-TypePC           db      'PC', 0DH, 0AH,'$'
+TypePC           db      'PC', 0DH, 0AH, '$'
 TypeXT           db      'PC/XT', 0DH, 0AH, '$'
 TypePS2_30       db      'PS2 model 30', 0DH, 0AH, '$'
 TypePS2_50_60    db      'PS2 model 50 or 60', 0DH, 0AH, '$'
@@ -120,8 +120,8 @@ Begin:
     mov     al, bh
     call    BYTE_TO_HEX
     mov     di, offset StringOEM
-    mov     [di+5], al
-    mov     [di+6], ah
+    mov     [di+4], al
+    mov     [di+5], ah
         
 ;   write user serial number in string (currently in bl) using byte_to_hext (converys byte to hex and writes in al and ah)        
     mov     di, offset StringUser
