@@ -127,7 +127,8 @@ db 0DH,0AH, '$'
 			jmp end_case
 	default: 
 			call BYTE_TO_HEX
-			mov number, AX
+			mov DI, offset number
+			mov word ptr DS:[DI], AX
 			mov dx, offset Message
 	end_case:
 			mov AH,09h
@@ -150,11 +151,13 @@ db 0DH,0AH, '$'
 			
 			mov AL, BH
 			call BYTE_TO_HEX
-			mov Serial_n, AX
+			mov DI, offset Serial_n
+			mov word ptr DS:[DI], AX
 			
 			mov AL, BL
 			call BYTE_TO_HEX
-			mov Serial_user, AX
+			mov DI, offset Serial_user
+			mov word ptr DS:[DI], AX
 			mov AX, CX
 			mov DI, offset Serial_user
 			add DI, 5
