@@ -1,0 +1,256 @@
+Microsoft (R) Macro Assembler Version 5.10                  2/24/21 42:01:20
+                                                             Page     1-1
+
+
+ 0000				LB_2 SEGMENT
+					ASSUME CS:LB_2, DS:LB_2, ES:NOTHING, SS
+				:NOTHING
+ 0100					ORG 100H
+ 0100  E9 01F2 R		START: JMP BEGIN
+				; Данные:
+ 0103  0D 0A 91 A5 A3 AC	Message db 0DH, 0AH, 'Сегментный адрес недопуст
+				имой памяти: '
+       A5 AD E2 AD EB A9	
+       20 A0 A4 E0 A5 E1	
+       20 AD A5 A4 AE AF	
+       E3 E1 E2 A8 AC AE	
+       A9 20 AF A0 AC EF	
+       E2 A8 3A 20		
+ 012B  0000 0000		Adress_1  dw 0, 0
+ 012F  0D 0A					  db 0DH, 0AH
+				
+ 0131  91 A5 A3 AC A5 AD			db 'Сегментный адрес среды: '
+       E2 AD EB A9 20 A0	
+       A4 E0 A5 E1 20 E1	
+       E0 A5 A4 EB 3A 20	
+ 0149  0000 0000		Adress_2  dw 0, 0
+ 014D  0D 0A					db 0DH, 0AH
+						
+ 014F  95 A2 AE E1 E2 20			db 'Хвост командной строки:$'
+       AA AE AC A0 AD A4	
+       AD AE A9 20 E1 E2	
+       E0 AE AA A8 3A 24	
+ 0167  00 24			Symbol  db 0, '$'
+ 0169  91 AE A4 A5 E0 A6	Content db 'Содержимое области среды:', 0DH, 0A
+				H, '$'
+       A8 AC AE A5 20 AE	
+       A1 AB A0 E1 E2 A8	
+       20 E1 E0 A5 A4 EB	
+       3A 0D 0A 24		
+ 0185  8F E3 E2 EC 20 A7	Puth 	db 'Путь загружаемого модуля: $'
+       A0 A3 E0 E3 A6 A0	
+       A5 AC AE A3 AE 20	
+       AC AE A4 E3 AB EF	
+       3A 20 24			
+ 01A0  0D 0A 24			Enter_	db 0DH, 0AH, '$'
+						
+				
+				; Код (процедуры):
+ 01A3					TETR_TO_HEX PROC near
+ 01A3  24 0F					and AL,0Fh
+ 01A5  3C 09					cmp AL,09
+ 01A7  76 02					jbe NEXT
+ 01A9  04 07					add AL,07
+ 01AB  04 30				NEXT: add AL,30h
+ 01AD  C3					ret
+ 01AE					TETR_TO_HEX ENDP
+				
+ 01AE					BYTE_TO_HEX PROC near
+Microsoft (R) Macro Assembler Version 5.10                  2/24/21 42:01:20
+                                                             Page     1-2
+
+
+ 01AE  51					push CX
+ 01AF  8A E0					mov AH,AL
+ 01B1  E8 01A3 R				call TETR_TO_HEX
+ 01B4  86 C4					xchg AL,AH
+ 01B6  B1 04					mov CL,4
+ 01B8  D2 E8					shr AL,CL
+ 01BA  E8 01A3 R				call TETR_TO_HEX
+				
+ 01BD  59					pop CX
+ 01BE  C3					ret
+ 01BF					BYTE_TO_HEX ENDP
+					
+ 01BF					WRD_TO_HEX PROC near
+ 01BF  53					push BX
+ 01C0  8A FC					mov BH,AH
+ 01C2  E8 01AE R				call BYTE_TO_HEX
+ 01C5  88 25					mov [DI],AH
+ 01C7  4F					dec DI
+ 01C8  88 05					mov [DI],AL
+ 01CA  4F					dec DI
+ 01CB  8A C7					mov AL,BH
+ 01CD  E8 01AE R				call BYTE_TO_HEX
+ 01D0  88 25					mov [DI],AH
+ 01D2  4F					dec DI
+ 01D3  88 05					mov [DI],AL
+ 01D5  5B					pop BX
+ 01D6  C3					ret
+ 01D7					WRD_TO_HEX ENDP
+					
+ 01D7					PRINT_SYMBOL PROC near
+ 01D7  26: 8A 1D				mov BL, ES:[DI]
+ 01DA  88 1E 0167 R				mov Symbol, BL
+ 01DE  CD 21					int 21h
+ 01E0  47					inc DI
+ 01E1  C3					ret
+ 01E2					PRINT_SYMBOL ENDP
+					
+ 01E2					PRINT_ENTER PROC near
+ 01E2  52					push DX
+ 01E3  BA 01A0 R				mov DX, offset Enter_
+ 01E6  CD 21					int 21h
+ 01E8  5A					pop DX
+ 01E9  C3					ret
+ 01EA					PRINT_ENTER ENDP
+					
+ 01EA					PRINT_TAB PROC near
+ 01EA  C6 06 0167 R 09				mov Symbol, 09h
+ 01EF  CD 21					int 21h
+ 01F1  C3					ret
+ 01F2					PRINT_TAB ENDP
+					
+				; Код (программа):
+ 01F2					BEGIN:
+ 01F2  26: A1 0002					mov AX, ES:0002h
+Microsoft (R) Macro Assembler Version 5.10                  2/24/21 42:01:20
+                                                             Page     1-3
+
+
+ 01F6  BF 012B R					mov DI, offset Adress_1
+ 01F9  83 C7 03						add DI, 3
+ 01FC  E8 01BF R					call WRD_TO_HEX
+							
+ 01FF  26: A1 002C					mov AX, ES:002Ch
+ 0203  BF 0149 R					mov DI, offset Adress_2
+ 0206  83 C7 03						add DI, 3
+ 0209  E8 01BF R					call WRD_TO_HEX
+							
+ 020C  BA 0103 R					mov DX, offset Message
+ 020F  B4 09						mov AH,09h
+ 0211  CD 21						int 21h
+							
+ 0213  B5 00						mov CH, 0
+ 0215  26: 8A 0E 0080					mov CL, ES:0080h
+ 021A  BA 0167 R					mov DX, offset Symbol
+ 021D  B4 09						mov AH, 09h
+ 021F  BF 0081						mov DI, 81h
+ 0222  83 F9 00						cmp CX, 0
+ 0225  74 05						je End_loop
+ 0227					Write_tail:
+ 0227  E8 01D7 R					call PRINT_SYMBOL
+ 022A  E2 FB						loop Write_tail
+ 022C					End_loop:
+ 022C  E8 01E2 R					call PRINT_ENTER
+							
+ 022F  52						push DX
+ 0230  BA 0169 R					mov DX, offset Content
+ 0233  CD 21						int 21h
+ 0235  5A						pop DX
+							
+ 0236  8E 06 002C					mov ES, DS:002Ch
+ 023A  BF 0000						mov DI, 0
+ 023D  B1 00						mov CL, 0
+ 023F  E8 01EA R					call PRINT_TAB
+ 0242					Writing:		
+ 0242  26: 38 0D					cmp ES:[DI], CL
+ 0245  75 07						jne Further
+ 0247  E8 01E2 R					call PRINT_ENTER
+ 024A  E8 01EA R					call PRINT_TAB
+ 024D  47						inc DI
+ 024E					Further:
+ 024E  26: 38 0D					cmp ES:[DI], CL
+ 0251  74 05						je Finish
+ 0253  E8 01D7 R					call PRINT_SYMBOL
+ 0256  EB EA						jmp Writing
+ 0258					Finish:
+ 0258  E8 01E2 R					call PRINT_ENTER
+ 025B  52						push DX
+ 025C  BA 0185 R					mov DX, offset Puth
+ 025F  CD 21						int 21h
+ 0261  5A						POP DX
+							
+ 0262  83 C7 03						add DI, 3
+Microsoft (R) Macro Assembler Version 5.10                  2/24/21 42:01:20
+                                                             Page     1-4
+
+
+ 0265					Writing_puth:
+ 0265  26: 38 0D					cmp ES:[DI], CL
+ 0268  74 05						je Main_Finish
+ 026A  E8 01D7 R					call PRINT_SYMBOL
+ 026D  EB F6						jmp Writing_puth
+ 026F					Main_Finish:
+ 026F  E8 01E2 R					call PRINT_ENTER
+							
+ 0272  32 C0						xor AL,AL
+ 0274  B4 4C						mov AH,4Ch
+ 0276  CD 21						int 21H
+ 0278				LB_2 ENDS
+				END START
+Microsoft (R) Macro Assembler Version 5.10                  2/24/21 42:01:20
+                                                             Symbols-1
+
+
+Segments and Groups:
+
+                N a m e         	Length	 Align	Combine Class
+
+LB_2 . . . . . . . . . . . . . .  	0278	PARA	NONE	
+
+Symbols:            
+
+                N a m e         	Type	 Value	 Attr
+
+ADRESS_1 . . . . . . . . . . . .  	L WORD	012B	LB_2
+ADRESS_2 . . . . . . . . . . . .  	L WORD	0149	LB_2
+
+BEGIN  . . . . . . . . . . . . .  	L NEAR	01F2	LB_2
+BYTE_TO_HEX  . . . . . . . . . .  	N PROC	01AE	LB_2	Length = 0011
+
+CONTENT  . . . . . . . . . . . .  	L BYTE	0169	LB_2
+
+END_LOOP . . . . . . . . . . . .  	L NEAR	022C	LB_2
+ENTER_ . . . . . . . . . . . . .  	L BYTE	01A0	LB_2
+
+FINISH . . . . . . . . . . . . .  	L NEAR	0258	LB_2
+FURTHER  . . . . . . . . . . . .  	L NEAR	024E	LB_2
+
+MAIN_FINISH  . . . . . . . . . .  	L NEAR	026F	LB_2
+MESSAGE  . . . . . . . . . . . .  	L BYTE	0103	LB_2
+
+NEXT . . . . . . . . . . . . . .  	L NEAR	01AB	LB_2
+
+PRINT_ENTER  . . . . . . . . . .  	N PROC	01E2	LB_2	Length = 0008
+PRINT_SYMBOL . . . . . . . . . .  	N PROC	01D7	LB_2	Length = 000B
+PRINT_TAB  . . . . . . . . . . .  	N PROC	01EA	LB_2	Length = 0008
+PUTH . . . . . . . . . . . . . .  	L BYTE	0185	LB_2
+
+START  . . . . . . . . . . . . .  	L NEAR	0100	LB_2
+SYMBOL . . . . . . . . . . . . .  	L BYTE	0167	LB_2
+
+TETR_TO_HEX  . . . . . . . . . .  	N PROC	01A3	LB_2	Length = 000B
+
+WRD_TO_HEX . . . . . . . . . . .  	N PROC	01BF	LB_2	Length = 0018
+WRITE_TAIL . . . . . . . . . . .  	L NEAR	0227	LB_2
+WRITING  . . . . . . . . . . . .  	L NEAR	0242	LB_2
+WRITING_PUTH . . . . . . . . . .  	L NEAR	0265	LB_2
+
+@CPU . . . . . . . . . . . . . .  	TEXT  0101h		
+@FILENAME  . . . . . . . . . . .  	TEXT  lb2_2		
+@VERSION . . . . . . . . . . . .  	TEXT  510		
+
+Microsoft (R) Macro Assembler Version 5.10                  2/24/21 42:01:20
+                                                             Symbols-2
+
+
+
+    152 Source  Lines
+    152 Total   Lines
+     29 Symbols
+
+  47896 + 457298 Bytes symbol space free
+
+      0 Warning Errors
+      0 Severe  Errors
