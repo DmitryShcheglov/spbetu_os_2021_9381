@@ -7,8 +7,8 @@ git fetch Andrexus23      # Матвеев
 git fetch Auhadiev        # Аухадиев 
 git fetch Irina8888       # Андрух 
 git fetch PtichkinSergey  # Птичкин 
-#git fetch                 # 
-#git fetch                 # 
+git fetch EFFECT322       # Николаев
+git fetch kirja1980       # Прашутинский
 #git fetch                 # 
 #git fetch                 # 
 #git fetch                 # 
