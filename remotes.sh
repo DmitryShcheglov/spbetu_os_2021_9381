@@ -9,7 +9,7 @@ git remote add Irina8888                 https://github.com/Irina8888/spbetu_os_
 git remote add PtichkinSergey            https://github.com/PtichkinSergey/spbetu_os_2021_9381.git     # Птичкин
 git remote add EFFECT322                 https://github.com/EFFECT322/spbetu_os_2021_9381.git          # Николаев
 git remote add kirja1980                 https://github.com/kirja1980/spbetu_os_2021_9381.git          # Прашутинский
-#git remote add                           https://github.com//spbetu_os_2021_9381.git                  # 
+git remote add ImSOLty                   https://github.com/ImSOLty/spbetu_os_2021_9381.git            # Игнашов
 #git remote add                           https://github.com//spbetu_os_2021_9381.git                  # 
 #git remote add                           https://github.com//spbetu_os_2021_9381.git                  # 
 #git remote add                           https://github.com//spbetu_os_2021_9381.git                  # 
