@@ -3,10 +3,10 @@ DOSSEG
 .stack 100h
 
 .data
-StringType       db      'Machine type: ', '$'
-StringSystemVer  db      'System version:  .  ', 0DH, 0AH, '$'
+StringSystemVer  db      'System version: . ', 0DH, 0AH, '$'
 StringOEM        db      'OEM:   ', 0DH, 0AH, '$'
 StringUser       db      'User serial number:       ', 0DH, 0AH, '$'
+StringType       db      'Machine type: $'
 
 TypeAT           db      'AT', 0DH, 0AH, '$'
 TypePC           db      'PC', 0DH, 0AH, '$'
@@ -106,15 +106,10 @@ Begin:
     
 ;   write system version in string (currently in al and ah)   
     mov     dh, ah ; saving ah in dh as byte_to_dec rewrites it
-    mov     di, offset StringSystemVer
+    mov     si, offset StringSystemVer + 15
     call    BYTE_TO_DEC
-    lodsw   ; load ah from si (byte_to_dec writes result in si)
-    mov     [di+16], ah
-                
-    mov     al, dh
+    add     si, 3
     call    BYTE_TO_DEC
-    lodsw
-    mov     [di+18], ah
     
 ;   write OEM version in string (currently in bh) using byte_to_hex   
     mov     al, bh
