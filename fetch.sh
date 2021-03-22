@@ -10,9 +10,9 @@ git fetch PtichkinSergey  # Птичкин
 git fetch EFFECT322       # Николаев
 git fetch kirja1980       # Прашутинский
 git fetch ImSOLty         # Игнашов
-#git fetch                 # 
-#git fetch                 # 
-#git fetch                 # 
+git fetch YudjinSud       # Судаков  
+git fetch Dmitrydavka     # Давыдов 
+git fetch PribylovNikita  # Прибылов 
 #git fetch                 # 
 #git fetch                 # 
 #git fetch                 # 

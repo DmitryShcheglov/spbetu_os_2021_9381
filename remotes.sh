@@ -10,9 +10,9 @@ git remote add PtichkinSergey            https://github.com/PtichkinSergey/spbet
 git remote add EFFECT322                 https://github.com/EFFECT322/spbetu_os_2021_9381.git          # Николаев
 git remote add kirja1980                 https://github.com/kirja1980/spbetu_os_2021_9381.git          # Прашутинский
 git remote add ImSOLty                   https://github.com/ImSOLty/spbetu_os_2021_9381.git            # Игнашов
-#git remote add                           https://github.com//spbetu_os_2021_9381.git                  # 
-#git remote add                           https://github.com//spbetu_os_2021_9381.git                  # 
-#git remote add                           https://github.com//spbetu_os_2021_9381.git                  # 
+git remote add YudjinSud                 https://github.com/YudjinSud/spbetu_os_2021_9381.git          # Судаков 
+git remote add Dmitrydavka               https://github.com/Dmitrydavka/spbetu_os_2021_9381.git        # Давыдов
+git remote add PribylovNikita            https://github.com/PribylovNikita/spbetu_os_2021_9381.git     # Прибылов
 #git remote add                           https://github.com//spbetu_os_2021_9381.git                  # 
 #git remote add                           https://github.com//spbetu_os_2021_9381.git                  # 
 #git remote add                           https://github.com//spbetu_os_2021_9381.git                  # 
