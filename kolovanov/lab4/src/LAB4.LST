@@ -1,0 +1,483 @@
+Microsoft (R) Macro Assembler Version 5.10                  3/25/21 03:16:47
+                                                             Page     1-1
+
+
+				.model small
+				.stack 100h
+				
+				.code
+				
+ 0000				INTERRUPT_HANDLER PROC FAR
+ 0000  EB 29 90			    jmp interrupt_handler_start
+				
+ 0003  0F 0F FF 00		    INTERRUPT_HANDLER_ID DB 0Fh, 0Fh, 0FFh, 00h
+ 0007  0000			    INTERRUPT_HANDLER_CALL_NUMBER DW 0h
+ 0009  0000			    KEEP_CS DW 0h
+ 000B  0000			    KEEP_IP DW 0h
+ 000D  49 6E 74 65 72 72	    CALL_NUMBER_MESSAGE DB "Interrupt calls num
+				ber: "
+       75 70 74 20 63 61	
+       6C 6C 73 20 6E 75	
+       6D 62 65 72 3A 20	
+ 0025  20 20 20 20 20 24	    CALL_NUMBER DB "     $"
+				
+ 002B				interrupt_handler_start:
+ 002B  50				push ax
+ 002C  51				push cx
+ 002D  52				push dx
+ 002E  56			    push si
+ 002F  55				push bp
+ 0030  06				push es
+				
+				; Запоминаем позицию курс�
+				�ра
+ 0031  E8 00A4 R			call GET_CURSOR
+ 0034  52				push dx
+				
+				; Увеличиваем счетчик на 1
+ 0035  2E: FF 06 0007 R		    inc word ptr cs:[INTERRUPT_HANDLER_CALL_NUM
+				BER]
+					
+				; Записываем значение сче�
+				�чика в строку CALL_NUMBER
+ 003A  BE 0029 R		    mov si, offset CALL_NUMBER + 4
+ 003D  2E: A1 0007 R		    mov ax, cs:[INTERRUPT_HANDLER_CALL_NUMBER]
+ 0041  33 D2				xor dx, dx
+ 0043  B9 000A				mov cx, 10
+ 0046				loop_bd:
+ 0046  F7 F1				div cx
+ 0048  80 CA 30				or dl, 30h
+ 004B  2E: 88 14			mov cs:[si], dl
+ 004E  4E				dec si
+ 004F  33 D2				xor dx, dx
+ 0051  3D 000A				cmp ax, 10
+ 0054  73 F0				jae loop_bd
+ 0056  3C 00				cmp al, 00h
+ 0058  74 05				je print_count
+ 005A  0C 30				or al, 30h
+ 005C  2E: 88 04			mov cs:[si], al
+Microsoft (R) Macro Assembler Version 5.10                  3/25/21 03:16:47
+                                                             Page     1-2
+
+
+				
+				; Печатаем сообщение и зна
+				чение счетчика на экран
+ 005F				print_count:
+ 005F  8C C8				mov ax, cs
+ 0061  8E C0			    mov es, ax
+					
+ 0063  B9 0018				mov cx, 24
+ 0066  33 D2				xor dx, dx
+ 0068  BD 000D R		    mov bp, offset CALL_NUMBER_MESSAGE
+ 006B  E8 008A R		    call PRINT_STRING_ES_BP
+					
+ 006E  B9 0005				mov cx, 5
+ 0071  B6 00				mov dh, 0
+ 0073  B2 18				mov dl, 24
+ 0075  BD 0025 R		    mov bp, offset CALL_NUMBER
+ 0078  E8 008A R		    call PRINT_STRING_ES_BP
+					
+				; Восстанавливаем курсор
+ 007B  5A				pop dx
+ 007C  E8 0099 R			call SET_CURSOR
+					
+ 007F  07				pop es
+ 0080  5D				pop bp
+ 0081  5E			    pop si
+ 0082  5A			    pop dx
+ 0083  59				pop cx
+ 0084  58				pop ax
+					
+ 0085  B0 20			    mov al, 20h
+ 0087  E6 20			    out 20h, al 
+				
+ 0089  CF			    iret
+ 008A				INTERRUPT_HANDLER ENDP
+				
+ 008A				PRINT_STRING_ES_BP PROC NEAR 
+ 008A  50			    push ax 
+ 008B  53			    push bx 
+				
+ 008C  B4 13			    mov ah, 13h 
+ 008E  B0 01			    mov al, 1
+ 0090  B7 00			    mov bh, 0
+ 0092  B3 03				mov bl, 3
+ 0094  CD 10			    int 10h 
+				
+ 0096  5B			    pop bx 
+ 0097  58			    pop ax 
+				
+ 0098  C3			    ret 
+ 0099				PRINT_STRING_ES_BP ENDP 
+				
+ 0099				SET_CURSOR PROC NEAR 
+ 0099  50			    push ax 
+ 009A  53			    push bx 
+Microsoft (R) Macro Assembler Version 5.10                  3/25/21 03:16:47
+                                                             Page     1-3
+
+
+				
+ 009B  B4 02			    mov ah, 02h 
+ 009D  B7 00			    mov bh, 00h
+ 009F  CD 10			    int 10h 
+				 
+ 00A1  5B			    pop bx 
+ 00A2  58			    pop ax 
+				    
+ 00A3  C3			    ret 
+ 00A4				SET_CURSOR ENDP
+				
+ 00A4				GET_CURSOR PROC NEAR 
+ 00A4  50			    push ax 
+ 00A5  53			    push bx 
+				
+ 00A6  B4 03			    mov ah, 03h 
+ 00A8  B7 00			    mov bh, 00h
+ 00AA  CD 10			    int 10h 
+				
+ 00AC  5B			    pop bx 
+ 00AD  58			    pop ax 
+				
+ 00AE  C3			    ret
+ 00AF				GET_CURSOR ENDP
+				
+ 00AF				GET_INTERRUPT_HANDLER PROC NEAR
+ 00AF  50			    push ax
+				
+ 00B0  B4 35			    mov ah, 35h
+ 00B2  B0 1C			    mov al, 1Ch
+ 00B4  CD 21			    int 21h
+				
+ 00B6  58			    pop ax
+				
+ 00B7  C3			    ret
+ 00B8				GET_INTERRUPT_HANDLER ENDP
+				
+ 00B8				RESTORE_INTERRUPT_HANDLER PROC NEAR
+ 00B8  50			    push ax
+ 00B9  53				push bx
+ 00BA  52			    push dx
+ 00BB  06				push es
+				
+				; Достаем установленный о�
+				�работчик прерываний
+ 00BC  E8 00AF R		    call GET_INTERRUPT_HANDLER
+ 00BF  06				push es
+					
+				; Восстанавливаем значени
+				е старого обработчика пре
+				рываний
+ 00C0  1E				push ds
+ 00C1  FA			    cli
+ 00C2  26: A1 0009 R		    mov ax, es:[KEEP_CS]
+Microsoft (R) Macro Assembler Version 5.10                  3/25/21 03:16:47
+                                                             Page     1-4
+
+
+ 00C6  26: 8B 16 000B R		    mov dx, es:[KEEP_IP]
+ 00CB  8E D8			    mov ds, ax 
+ 00CD  B4 25			    mov ah, 25h
+ 00CF  B0 1C			    mov al, 1Ch 
+ 00D1  CD 21			    int 21h
+ 00D3  FB			    sti
+ 00D4  1F				pop ds
+					
+ 00D5  BA 0061 R			mov dx, offset INTERRUPT_HANDLER_RESTOR
+				E_MESSAGE
+ 00D8  E8 0167 R			call PRINT
+				
+				; Освобождаем память
+ 00DB  07				pop es
+ 00DC  8C C2			    mov dx, es
+ 00DE  B4 62				mov ah, 62h
+ 00E0  CD 21			    int 21h
+ 00E2  B8 ---- R		    mov ax, @code
+ 00E5  2B C3			    sub ax, bx
+ 00E7  2B D0			    sub dx, ax
+ 00E9  8E C2			    mov es, dx
+					
+ 00EB  26: 8B 16 002C		    mov dx, es:[2Ch]
+ 00F0  B4 49			    mov ah, 49h
+ 00F2  CD 21			    int 21h
+				    
+ 00F4  8E C2			    mov es, dx
+ 00F6  B4 49			    mov ah, 49h
+ 00F8  CD 21			    int 21h
+				
+ 00FA  07				pop es
+ 00FB  5A			    pop dx
+ 00FC  5B				pop bx
+ 00FD  58			    pop ax
+				
+ 00FE  C3			    ret
+ 00FF				RESTORE_INTERRUPT_HANDLER ENDP
+				
+ 00FF				SET_INTERRUPT_HANDLER PROC NEAR
+ 00FF  50				push ax
+ 0100  51				push cx
+ 0101  52				push dx
+ 0102  06				push es
+ 0103  1E				push ds
+				
+				; Достаем установленный о�
+				�работчик прерываний и со�
+				�раняем его
+ 0104  E8 00AF R			call GET_INTERRUPT_HANDLER
+ 0107  2E: 8C 06 0009 R		    mov KEEP_CS, es
+ 010C  2E: 89 1E 000B R		    mov KEEP_IP, bx
+					
+				; Устанавливаем новый обр�
+				�ботчик прерываний
+Microsoft (R) Macro Assembler Version 5.10                  3/25/21 03:16:47
+                                                             Page     1-5
+
+
+ 0111  FA			    cli 
+ 0112  B8 ---- R		    mov ax, seg INTERRUPT_HANDLER
+ 0115  BA 0000 R		    mov dx, offset INTERRUPT_HANDLER
+ 0118  8E D8			    mov ds, ax 
+ 011A  B4 25			    mov ah, 25h 
+ 011C  B0 1C			    mov al, 1Ch
+ 011E  CD 21			    int 21h
+ 0120  FB			    sti
+					
+ 0121  1F				pop ds
+ 0122  BA 0000 R			mov dx, offset INTERRUPT_HANDLER_INSTAL
+				L_MESSAGE
+ 0125  E8 0167 R			call PRINT
+					
+ 0128  07				pop es
+ 0129  5A			    pop dx
+ 012A  59				pop cx
+ 012B  58			    pop ax
+				
+ 012C  C3			    ret
+ 012D				SET_INTERRUPT_HANDLER ENDP
+				
+ 012D				CHECK_INTERRUPT_HANDLER PROC NEAR
+ 012D  53			    push bx
+ 012E  51				push cx
+ 012F  56			    push si
+ 0130  57			    push di
+ 0131  06			    push es
+ 0132  1E				push ds
+				
+				; Достаем установленный о�
+				�работчик прерываний
+ 0133  E8 00AF R		    call GET_INTERRUPT_HANDLER
+				
+				; Проверяем сигнатуру
+ 0136  B8 0000			    mov ax, 0
+ 0139  26: 8A 4F 03		    mov cl, es:[bx + 3]
+ 013D  80 F9 0F				cmp cl, 0Fh
+ 0140  75 1E			    jne end_check
+ 0142  26: 8A 4F 04			mov cl, es:[bx + 4]
+ 0146  80 F9 0F				cmp cl, 0Fh
+ 0149  75 15			    jne end_check
+ 014B  26: 8A 4F 05			mov cl, es:[bx + 5]
+ 014F  80 F9 FF				cmp cl, 0FFh
+ 0152  75 0C			    jne end_check
+ 0154  26: 8A 4F 06			mov cl, es:[bx + 6]
+ 0158  80 F9 00				cmp cl, 00h
+ 015B  75 03			    jne end_check
+ 015D  B8 0001			    mov ax, 1
+				
+ 0160				end_check:
+ 0160  1F				pop ds
+ 0161  07			    pop es
+ 0162  5F			    pop di
+Microsoft (R) Macro Assembler Version 5.10                  3/25/21 03:16:47
+                                                             Page     1-6
+
+
+ 0163  5E			    pop si
+ 0164  59				pop cx
+ 0165  5B			    pop bx
+				
+ 0166  C3			    ret 
+ 0167				CHECK_INTERRUPT_HANDLER ENDP
+				
+ 0167				PRINT PROC NEAR
+ 0167  50				push ax
+ 0168  B4 09				mov ah, 09h
+ 016A  CD 21				int 21h
+ 016C  58				pop ax
+ 016D  C3				ret
+ 016E				PRINT ENDP
+				
+ 016E				BEGIN:
+ 016E  B8 ---- R		    mov ax, @data
+ 0171  8E D8			    mov ds, ax
+				
+ 0173  26: 80 3E 0082 2F	    cmp byte ptr es:[81h + 1], '/'
+ 0179  75 36			    jne check_handler
+ 017B  26: 80 3E 0083 75	    cmp byte ptr es:[81h + 2], 'u'
+ 0181  75 2E			    jne check_handler
+ 0183  26: 80 3E 0084 6E	    cmp byte ptr es:[81h + 3], 'n'
+ 0189  75 26			    jne check_handler
+					
+ 018B  E8 012D R			call CHECK_INTERRUPT_HANDLER
+ 018E  3D 0000			    cmp ax, 0
+ 0191  74 06				je handler_isnt_setted
+ 0193  E8 00B8 R		    call RESTORE_INTERRUPT_HANDLER
+ 0196  EB 27 90				jmp exit
+					
+ 0199				handler_isnt_setted:
+ 0199  BA 0094 R			mov dx, offset INTERRUPT_HANDLER_NOT_SE
+				T_MESSAGE
+ 019C  E8 0167 R			call PRINT
+ 019F  EB 1E 90				jmp exit
+				
+ 01A2				set_handler:
+ 01A2  E8 00FF R		    call SET_INTERRUPT_HANDLER
+					
+ 01A5  BA 01C5 R			mov dx, offset interrupt_handler_end
+ 01A8  B1 04			    mov cl, 4
+ 01AA  D3 EA			    shr dx, cl 
+ 01AC  42				inc dx
+ 01AD  B4 31			    mov ah, 31h 
+ 01AF  CD 21			    int 21h
+					
+ 01B1				check_handler:
+ 01B1  E8 012D R		    call CHECK_INTERRUPT_HANDLER
+ 01B4  3D 0000			    cmp ax, 0
+ 01B7  74 E9			    je set_handler
+ 01B9  BA 0033 R			mov dx, offset INTERRUPT_HANDLER_ALREAD
+				Y_SET_MESSAGE
+Microsoft (R) Macro Assembler Version 5.10                  3/25/21 03:16:47
+                                                             Page     1-7
+
+
+ 01BC  E8 0167 R			call PRINT
+				
+ 01BF				exit:
+ 01BF  32 C0			    xor al, al
+ 01C1  B4 4C				mov ah, 4Ch
+ 01C3  CD 21				int 21h
+				
+ 01C5				interrupt_handler_end:
+				
+				.data
+ 0000  54 68 65 20 69 6E		INTERRUPT_HANDLER_INSTALL_MESSAGE DB "T
+				he interrupt handler is successfully installed.
+				", 0Dh, 0Ah, "$"
+       74 65 72 72 75 70	
+       74 20 68 61 6E 64	
+       6C 65 72 20 69 73	
+       20 73 75 63 63 65	
+       73 73 66 75 6C 6C	
+       79 20 69 6E 73 74	
+       61 6C 6C 65 64 2E	
+       0D 0A 24			
+ 0033  54 68 65 20 69 6E		INTERRUPT_HANDLER_ALREADY_SET_MESSAGE D
+				B "The interrupt handler is already installed."
+				, 0Dh, 0Ah, "$"
+       74 65 72 72 75 70	
+       74 20 68 61 6E 64	
+       6C 65 72 20 69 73	
+       20 61 6C 72 65 61	
+       64 79 20 69 6E 73	
+       74 61 6C 6C 65 64	
+       2E 0D 0A 24		
+ 0061  54 68 65 20 69 6E		INTERRUPT_HANDLER_RESTORE_MESSAGE DB "T
+				he interrupt handler was successfully restored.
+				", 0Dh, 0Ah, "$"
+       74 65 72 72 75 70	
+       74 20 68 61 6E 64	
+       6C 65 72 20 77 61	
+       73 20 73 75 63 63	
+       65 73 73 66 75 6C	
+       6C 79 20 72 65 73	
+       74 6F 72 65 64 2E	
+       0D 0A 24			
+ 0094  54 68 65 20 69 6E		INTERRUPT_HANDLER_NOT_SET_MESSAGE DB "T
+				he interrupt handler is not installed yet.", 0D
+				h, 0Ah, "$"
+       74 65 72 72 75 70	
+       74 20 68 61 6E 64	
+       6C 65 72 20 69 73	
+       20 6E 6F 74 20 69	
+       6E 73 74 61 6C 6C	
+       65 64 20 79 65 74	
+       2E 0D 0A 24		
+				
+				END BEGIN
+Microsoft (R) Macro Assembler Version 5.10                  3/25/21 03:16:47
+                                                             Symbols-1
+
+
+Segments and Groups:
+
+                N a m e         	Length	 Align	Combine Class
+
+DGROUP . . . . . . . . . . . . .  	GROUP
+  _DATA  . . . . . . . . . . . .  	00C2	WORD	PUBLIC	'DATA'
+  STACK  . . . . . . . . . . . .  	0100	PARA	STACK	'STACK'
+_TEXT  . . . . . . . . . . . . .  	01C5	WORD	PUBLIC	'CODE'
+
+Symbols:            
+
+                N a m e         	Type	 Value	 Attr
+
+BEGIN  . . . . . . . . . . . . .  	L NEAR	016E	_TEXT
+
+CALL_NUMBER  . . . . . . . . . .  	L BYTE	0025	_TEXT
+CALL_NUMBER_MESSAGE  . . . . . .  	L BYTE	000D	_TEXT
+CHECK_HANDLER  . . . . . . . . .  	L NEAR	01B1	_TEXT
+CHECK_INTERRUPT_HANDLER  . . . .  	N PROC	012D	_TEXT	Length = 003A
+
+END_CHECK  . . . . . . . . . . .  	L NEAR	0160	_TEXT
+EXIT . . . . . . . . . . . . . .  	L NEAR	01BF	_TEXT
+
+GET_CURSOR . . . . . . . . . . .  	N PROC	00A4	_TEXT	Length = 000B
+GET_INTERRUPT_HANDLER  . . . . .  	N PROC	00AF	_TEXT	Length = 0009
+
+HANDLER_ISNT_SETTED  . . . . . .  	L NEAR	0199	_TEXT
+
+INTERRUPT_HANDLER  . . . . . . .  	F PROC	0000	_TEXT	Length = 008A
+INTERRUPT_HANDLER_ALREADY_SET_M   	L BYTE	0033	_DATA
+INTERRUPT_HANDLER_CALL_NUMBER  .  	L WORD	0007	_TEXT
+INTERRUPT_HANDLER_END  . . . . .  	L NEAR	01C5	_TEXT
+INTERRUPT_HANDLER_ID . . . . . .  	L BYTE	0003	_TEXT
+INTERRUPT_HANDLER_INSTALL_MESSA   	L BYTE	0000	_DATA
+INTERRUPT_HANDLER_NOT_SET_MESSA   	L BYTE	0094	_DATA
+INTERRUPT_HANDLER_RESTORE_MESSA   	L BYTE	0061	_DATA
+INTERRUPT_HANDLER_START  . . . .  	L NEAR	002B	_TEXT
+
+KEEP_CS  . . . . . . . . . . . .  	L WORD	0009	_TEXT
+KEEP_IP  . . . . . . . . . . . .  	L WORD	000B	_TEXT
+
+LOOP_BD  . . . . . . . . . . . .  	L NEAR	0046	_TEXT
+
+PRINT  . . . . . . . . . . . . .  	N PROC	0167	_TEXT	Length = 0007
+PRINT_COUNT  . . . . . . . . . .  	L NEAR	005F	_TEXT
+PRINT_STRING_ES_BP . . . . . . .  	N PROC	008A	_TEXT	Length = 000F
+
+RESTORE_INTERRUPT_HANDLER  . . .  	N PROC	00B8	_TEXT	Length = 0047
+
+SET_CURSOR . . . . . . . . . . .  	N PROC	0099	_TEXT	Length = 000B
+SET_HANDLER  . . . . . . . . . .  	L NEAR	01A2	_TEXT
+SET_INTERRUPT_HANDLER  . . . . .  	N PROC	00FF	_TEXT	Length = 002E
+
+Microsoft (R) Macro Assembler Version 5.10                  3/25/21 03:16:47
+                                                             Symbols-2
+
+
+@CODE  . . . . . . . . . . . . .  	TEXT  _TEXT		
+@CODESIZE  . . . . . . . . . . .  	TEXT  0		
+@CPU . . . . . . . . . . . . . .  	TEXT  0101h		
+@DATASIZE  . . . . . . . . . . .  	TEXT  0		
+@FILENAME  . . . . . . . . . . .  	TEXT  lab4		
+@VERSION . . . . . . . . . . . .  	TEXT  510		
+
+
+    321 Source  Lines
+    321 Total   Lines
+     46 Symbols
+
+  47736 + 451332 Bytes symbol space free
+
+      0 Warning Errors
+      0 Severe  Errors
