@@ -1,5 +1,5 @@
 ASSUME CS:CODE, DS:DATA, SS:MY_STACK
-
+;------------------------------------
 MY_STACK SEGMENT STACK 
 	DW 64 DUP(?)
 MY_STACK ENDS
@@ -14,9 +14,20 @@ INT_COUNT_FUNC PROC FAR ; обработчик прерываниий. печа�
 	PSP0 dw 0      								;7                      
 	PSP1 dw 0	                          		;9 хранит старое значение ES до того, как программа оставлена резидентной в памяти
 	INT_COUNT_VAL dw 0FEDCh                ;11 хранит количество вызванных прерываний
-	COUNT_MES db 'Count of interruptions: 0000 $' ;13 
-
+	KEEP_SS DW 0							; 13
+	KEEP_SP DW 0							; 15
+	KEEP_AX DW 0							; 17
+	COUNT_MES db 'Count of interruptions: 0000 $' ;19 
+	miniStack dw 12 dup(?) ;стек прерываний
 PROC_CODE:
+; переопределение стека
+	mov KEEP_SP, sp 
+    mov KEEP_AX, ax
+    mov KEEP_SS, ss
+    mov sp, offset PROC_CODE
+    mov ax, seg miniStack
+    mov ss, ax
+	
 	push ax      
 	push bx
 	push cx
@@ -80,14 +91,17 @@ END_INT:
 	pop dx
 	pop cx
 	pop bx
-	pop ax     
-
+	pop ax  
+		
+    mov ss, KEEP_SS
+    mov ax, KEEP_AX
+	mov sp, KEEP_SP
 	iret
 INT_COUNT_FUNC ENDP
-
+;------------------------------------
 MORE_MEMORY PROC
 MORE_MEMORY ENDP
-
+;------------------------------------
 CHECK_INTSET PROC NEAR;функция проверки установлен ли разработанный вектор прерывания
 	push bx
 	push dx
@@ -114,7 +128,7 @@ END0:
 
 	ret
 CHECK_INTSET ENDP
-
+;------------------------------------
 CHECK_UN PROC NEAR; проверка параметра un. процедура загрузки/выгрузки 
 	push es
 	
@@ -174,7 +188,7 @@ REDEF_INT PROC NEAR;Устанавливает новые обработчики
 
 	ret
 REDEF_INT ENDP
-
+;------------------------------------
 RESTORE_INT PROC NEAR
 	push ax
 	push bx
@@ -218,7 +232,7 @@ RESTORE_INT PROC NEAR
 	
 	ret
 RESTORE_INT ENDP
-
+;------------------------------------
 WRITE PROC NEAR;печать строки
 	push ax
 	mov ah, 09h
@@ -226,7 +240,7 @@ WRITE PROC NEAR;печать строки
 	pop ax
 	ret
 WRITE ENDP
-
+;------------------------------------
 MAIN PROC FAR
 	mov bx, 02Ch
 	mov ax, [bx]
