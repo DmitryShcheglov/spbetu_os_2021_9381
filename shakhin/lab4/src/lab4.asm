@@ -1,10 +1,5 @@
-ASSUME CS:CODE, DS:DATA, SS:MY_STACK
-
-MY_STACK SEGMENT STACK
-	DW 64 DUP(?)
-MY_STACK ENDS
-
-CODE SEGMENT
+LAB4 SEGMENT
+	ASSUME CS:LAB4, DS:DATA, SS:STACK
 
 MY_INTERRUPTION PROC FAR
 	jmp START_FUNC
@@ -17,7 +12,21 @@ MY_INTERRUPTION PROC FAR
 	MY_INTERRUPTION_SET dw 0FEDCh
 	INT_COUNT db 'Interrupts call count: 0000  $'
 
+	KEEP_SS dw ?
+	KEEP_SP dw ?
+	KEEP_AX dw ?
+	INT_STACK dw 64 dup (?)
+	END_INT_STACK dw ?
+
 START_FUNC:
+
+	mov KEEP_SS, ss
+	mov KEEP_SP, sp
+	mov KEEP_AX, ax
+	mov ax, cs
+	mov ss, ax
+	mov sp, offset END_INT_STACK
+
 	push ax
 	push bx
 	push cx
@@ -101,6 +110,12 @@ END_CALC:
 	pop cx
 	pop bx
 	pop ax
+
+	mov ss, KEEP_SS
+	mov ax, KEEP_AX
+	mov sp, KEEP_SP
+	mov AL, 20H
+	out 20H, AL
 
 	iret
 MY_INTERRUPTION ENDP
@@ -305,7 +320,10 @@ EXIT_PROGRAM:
 	int 21h
 MAIN_PROGRAM ENDP
 
-CODE ENDS
+LAB4 ENDS
+STACK SEGMENT STACK
+	db 64 DUP(?)
+STACK ENDS
 
 DATA SEGMENT
 	M_INT_NOT_SET db "Interruption did not load!", 0dh, 0ah, '$'
