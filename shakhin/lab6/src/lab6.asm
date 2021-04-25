@@ -32,7 +32,7 @@ main proc near
 
 	mov		bx, seg code
 	add		bx, offset CodeSegEnd
-	add		bx, 256 ;Stack
+	add		bx, 256
 	mov 	cl, 4h
 	shr 	bx, cl
 	mov		ah, 4Ah
