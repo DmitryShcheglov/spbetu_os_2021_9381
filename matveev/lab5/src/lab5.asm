@@ -6,36 +6,30 @@ ASTACK ENDS
 
 CODE SEGMENT
 ;----------------------------
-OUTPUT_PROC PROC NEAR ;Вывод на экран сообщения
+WRITE PROC NEAR ;Вывод на экран сообщения
 		push ax
 		mov  ah, 09h
 	    int  21h
 	    pop	 ax
 	    ret
-OUTPUT_PROC ENDP
+WRITE ENDP
 ;----------------------------
-INTERRUPTION PROC FAR
-	jmp begin
-	ADDR_PSP1   dw ? ;offset 3
-	ADDR_PSP2   dw ? ;offset 5
-	KEEP_IP 	dw ? ;offset 7
-	KEEP_CS 	dw ? ;offset 9
-	INTER_SET 	dw 0ABCDh ;offset 11
+USR_INTER PROC FAR
+	jmp START_CODE
+	ADDR_PSP1   dw 0 ;offset 3
+	ADDR_PSP2   dw 0 ;offset 5
+	KEEP_IP 	dw 0 ;offset 7
+	KEEP_CS 	dw 0 ;offset 9
+	SIGN 	dw 0ABCDh ;offset 11
 	REQ_KEY_1	db 02h
 	REQ_KEY_2	db 03h
 	REQ_KEY_3	db 04h
-	REQ_KEY_4	db 05h
-	REQ_KEY_5	db 06h
-	REQ_KEY_6	db 07h
-	REQ_KEY_7	db 08h
-	REQ_KEY_8	db 09h
-	REQ_KEY_9	db 0Ah
 	INT_STACK	dw 64 dup (?)
-	KEEP_SS		dw ?
-	KEEP_AX		dw ?
-	KEEP_SP		dw ?
+	KEEP_SS		dw 0
+	KEEP_AX		dw 0
+	KEEP_SP		dw 0
 
-begin:
+START_CODE:
 	mov KEEP_SS, ss
  	mov KEEP_SP, sp
  	mov KEEP_AX, ax
@@ -52,35 +46,14 @@ begin:
 	
 	in al,60h ;Cчитать ключ
 	cmp al, REQ_KEY_1
-	je 	key1 
+	je 	CHG_1_I 
 		
 	cmp al, REQ_KEY_2
-	je 	key2 
+	je 	CHG_N_T 
 		
 	cmp al, REQ_KEY_3
-	je 	key3 
+	je 	CHG_3_T 
 		
-	cmp al, REQ_KEY_4
-	je 	key4 
-		
-	cmp al, REQ_KEY_5
-	je 	key5 
-		
-	
-	cmp al, REQ_KEY_6
-	je 	key6 
-		
-	cmp al, REQ_KEY_7 
-	je 	key7
-
-	cmp al, REQ_KEY_8
-	je 	key8
-	
-	cmp al, REQ_KEY_9
-	je 	key9
-	
-	
-	
 	mov ss, KEEP_SS 
  	mov sp, KEEP_SP
 	
@@ -92,36 +65,15 @@ begin:
 		mov sp, CS:KEEP_SP
 		mov ss, CS:KEEP_SS
 		jmp dword ptr cs:[KEEP_IP]
-	key1:
-		mov cl, 'A'
-		jmp do_req
-	key2:
-		mov cl, 'B'
-		jmp do_req
-	key3:
-		mov cl, 'C'
-		jmp do_req
-	key4:
-		mov cl, 'D'
-		jmp do_req
-	key5:
-		mov cl, 'E'
-		jmp do_req
-
-
-	key6:
-		mov cl, 'F'
-		jmp do_req
-	key7:
-		mov cl, 'G'
-		jmp do_req
-	key8:
-		mov cl, 'H'
-		jmp do_req
-	key9:
+	CHG_1_I:
 		mov cl, 'I'
 		jmp do_req
-	
+	CHG_N_T:
+		mov cl, 'N'
+		jmp do_req
+	CHG_3_T:
+		mov cl, 'T'
+		jmp do_req
 
 	do_req:
 		in al,61h	;Взять значение порта управления клавиатурой
@@ -141,10 +93,10 @@ begin:
 		mov ch, 00h ;символ в CL уже занесён ранее, осталось обнулить CH	
 		int 16h
 		or 	al, al	;проверка переполнения буфера
-		jnz skip 	;если переполнен - идём в skip
-		jmp return	;иначе выходим
+		jnz SKIP 	;если переполнен - идём в skip
+		jmp END_OF_USR_INTER	;иначе выходим
 	
-	skip: 			;очищаем буфер
+	SKIP: 			;очищаем буфер
 		push es
 		push si
 		mov ax, 0040h
@@ -156,7 +108,7 @@ begin:
 		pop si
 		pop es
 		
-	return:
+	END_OF_USR_INTER:
 		pop dx    
 		pop cx
 		pop bx	
@@ -165,10 +117,10 @@ begin:
 		mov ax, KEEP_AX
 		mov sp, KEEP_SP
 		iret
-INTERRUPTION ENDP
+USR_INTER ENDP
 ;----------------------------
 last_byte:
-INSTALL_CHECK PROC NEAR	;Проверка установки прерывания
+CHECK_INTSET PROC NEAR	;Проверка установки прерывания
 	push bx
 	push dx
 	push es
@@ -179,20 +131,20 @@ INSTALL_CHECK PROC NEAR	;Проверка установки прерывани�
 
 	mov dx, es:[bx + 11]
 	cmp dx, 0ABCDh ;Проверка на совпадение кода прерывания 
-	je install_
+	je INSTALLED
 	mov al, 00h
-	jmp end_install
+	jmp END_CHECK_INTSET
 
-install_:
+INSTALLED: ; процедура вернёт 1 если прерывание установлено
 	mov al, 01h
-	jmp end_install
+	jmp END_CHECK_INTSET
 
-end_install:
+END_CHECK_INTSET:
 	pop es
 	pop dx
 	pop bx
 	ret
-INSTALL_CHECK ENDP
+CHECK_INTSET ENDP
 ;----------------------------
 UN_CHECK PROC NEAR ;Проверка на то, не ввёл ли пользователь /un
 	push es
@@ -200,43 +152,43 @@ UN_CHECK PROC NEAR ;Проверка на то, не ввёл ли пользо�
 	mov es, ax
 
 	cmp byte ptr es:[82h], '/'		
-	jne not_enter
+	jne END_UN_CHECK
 	cmp byte ptr es:[83h], 'u'		
-	jne not_enter
+	jne END_UN_CHECK
 	cmp byte ptr es:[84h], 'n'
-	jne not_enter
+	jne END_UN_CHECK
 	mov al, 1h
 
-not_enter:
+END_UN_CHECK:
 	pop es
 	ret
 UN_CHECK ENDP
 ;----------------------------
-INSTALL_INTER PROC NEAR ;Cохранение стандартного обработчика прерываний и загрузка собственного
+REDEF_INT PROC NEAR ;Cохранение стандартного обработчика прерываний и загрузка пользовательской версии
 	push ax
 	push bx
 	push dx
 	push es
-
-	mov ah, 35h
-	mov al, 09h
+	; получаем адрес обработчика прерывания (старого) для того чтобы сохранить
+	mov ah, 35h ;функция получения вектора
+	mov al, 09h ; номер вектора
 	int 21h
-
+	; на выходе в ES:BX = адрес обработчика прерывания
+	;возвращает значение вектора прерывания для INT (AL);
 	mov KEEP_IP, bx	;Запоминаем смещение и сегмент
 	mov KEEP_CS, es
 
 	push ds
-	lea dx, INTERRUPTION
-	mov ax, seg INTERRUPTION
+	lea dx, USR_INTER
+	mov ax, seg USR_INTER
 	mov ds, ax
-
-	mov ah, 25h
-	mov al, 09h
-	int 21h 
+	mov ah, 25h ; функция установки вектора 
+	mov al, 09h ; номер вектора
+	int 21h     ; меняем прерывание
 	pop ds
 
-	lea dx, INSTALL 
-	call OUTPUT_PROC 
+	lea dx, LOAD_MES 
+	call WRITE 
 
 	pop es
 	pop dx
@@ -244,9 +196,9 @@ INSTALL_INTER PROC NEAR ;Cохранение стандартного обраб
 	pop ax
 	
 	ret
-INSTALL_INTER ENDP
+REDEF_INT ENDP
 ;----------------------------
-UNLOAD_INTER PROC NEAR	;Выгрузка обработчика прерывания
+RESTORE_INT PROC NEAR	;Выгрузка обработчика прерывания (восстановленение старого)
 	push ax
 	push bx
 	push dx
@@ -256,11 +208,11 @@ UNLOAD_INTER PROC NEAR	;Выгрузка обработчика прерыван
 	mov al, 09h
 	int 21h
 
-	cli
+	cli;сбрасывает флаг прерывания в регистре флагов. 
+	;Когда этот флаг сброшен, процессор игнорирует все прерывания (кроме NMI)от внешних устройств
 	push ds            
 	mov dx, es:[bx + 7]   
 	mov ax, es:[bx + 9]   
-		
 	mov ds, ax
 	mov ah, 25h
 	mov al, 09h
@@ -268,18 +220,18 @@ UNLOAD_INTER PROC NEAR	;Выгрузка обработчика прерыван
 	pop ds
 	sti
 	
-	lea dx, UNLOAD
-	call OUTPUT_PROC 
+	lea dx, UNLOAD_MES
+	call WRITE 
 
 	push es ;Удаление MCB
 	mov cx,es:[bx+3]
 	mov es,cx
-	mov ah,49h
+	mov ah,49h ; Освободить распределенный блок памяти
 	int 21h
 	
 	pop es
 	mov cx,es:[bx+5]
-	mov es,cx
+	mov es,cx ; es - сегментный адрес (параграф) освобождаемого блока памяти
 	int 21h
 
 	pop es
@@ -290,15 +242,15 @@ UNLOAD_INTER PROC NEAR	;Выгрузка обработчика прерыван
 	mov ah, 4Ch	;Выход из программы через функцию 4C
 	int 21h
 	ret
-UNLOAD_INTER ENDP
+RESTORE_INT ENDP
 ;----------------------------
 MAIN  PROC FAR
     mov bx,2Ch
 	mov ax,[bx]
 	mov ADDR_PSP2,ax
-	mov ADDR_PSP1,ds  ;сохраняем PSP
+	mov ADDR_PSP1,ds  ;сохранение PSP
 	mov dx, ds 
-	sub ax,ax    
+	xor ax,ax    
 	xor bx,bx
 	mov ax,data  
 	mov ds,ax 
@@ -306,19 +258,21 @@ MAIN  PROC FAR
 
 	call UN_CHECK ;Проверка на введение /un 
 	cmp al, 01h
-	je unload_		
+	je TRY_TO_UNLOAD		
 
-	call INSTALL_CHECK  ;Проверка не является ли программа резидентной
+
+	call CHECK_INTSET  ;Проверка не является ли программа резидентной
 	cmp al, 01h
-	jne not_resident
-	
-	lea dx, ALR_INSTALL ;Программа уже загружена
-	call OUTPUT_PROC
-	jmp quit
+	jne NEED_TO_REDEF
 
-;Загрузка резидента
-not_resident: 
-	call INSTALL_INTER 
+ALREADY_INSTALLED:
+	lea dx, ALR_LOADED_MES ;Программа уже загружена
+	call WRITE
+	jmp END_OF_MAIN
+
+;Загрузка пользовательского прерывания
+NEED_TO_REDEF: 
+	call REDEF_INT 
 	lea dx, last_byte
 	mov cl, 04h
 	shr dx, cl
@@ -326,30 +280,30 @@ not_resident:
 	mov ax, 3100h
 	int 21h
 	
-;Выгрузка резидента      
-unload_:
-	call INSTALL_CHECK
-	cmp al, 0h
-	je not_install_
-	call UNLOAD_INTER
-	jmp quit
+;Выгрузка  пользовательского прерывания    
+TRY_TO_UNLOAD:
+	call CHECK_INTSET
+	cmp al, 1h
+	jne NOT_LOADED
+	call RESTORE_INT
+	jmp END_OF_MAIN
 
 ;Прерывание выгружено
-not_install_: 
-	lea dx, UNLOAD
-	call OUTPUT_PROC
+NOT_LOADED: 
+	lea dx, NOT_LOADED_MES
+	call WRITE
 	
-quit:
+END_OF_MAIN:
 	mov ah, 4Ch
 	int 21h
 MAIN  	ENDP
 CODE 	ENDS
 
 DATA SEGMENT
-	INSTALL    	db 'Interrupt handler is installed', 0dh, 0ah, '$'
-    NOT_INSTALL db 'Interrupt handler is not installed', 0dh, 0ah, '$'
-   	ALR_INSTALL db 'Interrupt handler is already installed', 0dh, 0ah, '$'
-	UNLOAD		db 'Interrupt handler was unloaded', 0dh, 0ah, '$'
+	LOAD_MES   db 'USER INTERRUPTION IS LOADING NOW', 0dh, 0ah, '$'
+    NOT_LOADED_MES db 'USER INTERRUPTION IS NOT LOADED', 0dh, 0ah, '$'
+   	ALR_LOADED_MES db 'USER INTERRUPTION IS ALREADY LOADED', 0dh, 0ah, '$'
+	UNLOAD_MES		db 'USER INTERRUPTION IS RESTORED', 0dh, 0ah, '$'
 DATA ENDS
 
-; END Main 
+END Main 
