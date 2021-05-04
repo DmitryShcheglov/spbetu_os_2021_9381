@@ -1,75 +1,79 @@
-; ASSUME CS:CODE, DS:DATA, SS:AStack
+ ASSUME CS:CODE, DS:DATA, SS:AStack
 AStack SEGMENT STACK
 	DW 64 DUP(?)
 AStack ENDS
 
 DATA SEGMENT
-	env_addr	dw ?	; сегментный адрес среды
-	cmd			dd ?	; сегмент и смещение командной строки
-	seg_of_1FCB	dd ?	; сегмент и смещение первого FCB 
-	seg_of_2FCB	dd ?	; сегмент и смещение второго FCB 
-	keep_sp		dw ?	
-	keep_ss		dw ?	
-	path_str 	db '                    LR2.COM                           ',0dH,0ah,'$',0h
+	ENVIR_ADDR	dw 0	; сегментный адрес среды. Если он равен 0, то вызываемая программа наследует
+	;среду вызывающей программы
+	; в противном случае вызывающая программа должна сформировать область памяти в качестве среды, 
+	;начинающуюся с адреса, кратного 16 и переместить этот адрес в блок параметров
+	CMD			dd 0	; сегмент и смещение командной строки
+	SEG_1FCB	dd 0	; сегмент и смещение первого FCB 
+	SEG_2FCB	dd 0	; сегмент и смещение второго FCB 
+	KEEP_SP		dw 0	
+	KEEP_SS		dw 0	
+	PATH 	db '                    lab2.com                          ',0dH,0ah,'$',0h
 	EOL			db '   ',0dh,0ah,'$'
-	err_1_7  	db 'The memory block is destroyed (code 7)', 0dh, 0ah, '$'
-    err_1_8	 	db 'Not enought memory to perform the function (code 8)', 0dh, 0ah, '$'
-    err_1_9	 	db 'Wrong adress of memory block (code 9)', 0dh, 0ah, '$'
+	ERR_1_7  	db 'THE MEMORY CONTROL BLOCK IS DESTROYED (CODE 7)', 0dh, 0ah, '$'
+    ERR_1_8	 	db 'NOT ENOUGHT MEMORY TO RUN THE FUNCTION (CODE 8)', 0dh, 0ah, '$'
+    ERR_1_9	 	db 'WRONG MEMORY BLOCK ADDRESS (CODE 9)', 0dh, 0ah, '$'
 DATA ENDS
 
 CODE SEGMENT
 ;----------------------------
-OUTPUT_PROC PROC NEAR ;Вывод на экран сообщения
+WRITE PROC NEAR ;Вывод на экран сообщения
 		push ax
 		mov  ah, 09h
 	    int  21h
 	    pop	 ax
 	    ret
-OUTPUT_PROC ENDP
+WRITE ENDP
 ;----------------------------
 COMPLETION_PROC PROC NEAR
-	jmp begin_f
-	finish   db   'Program finished with code    ', 0dh, 0ah, '$'
-	finish_0 db   'Normal completion', 0dh, 0ah, '$'
-	finish_1 db   'Completion by Ctrl-Break', 0dh, 0ah, '$'
-	finish_2 db   'Completion by device error', 0dh, 0ah, '$'
-	finish_3 db   'Completion by 31h function', 0dh, 0ah, '$'
-begin_f:
+	jmp BEGIN_COMPLETION
+	END_MES   db   'PROGRAM FINISHED WITH CODE    ', 0dh, 0ah, '$'
+	END_MES_0 db   'SUCCESSFULL COMPLETION', 0dh, 0ah, '$'
+	END_MES_1 db   'COMPLETION BY CTRL-BREAK', 0dh, 0ah, '$'
+	END_MES_2 db   'COMPLETION BY DEVICE ERROR', 0dh, 0ah, '$'
+	END_MES_3 db   'COMPLETION BY 31H FUNCTION', 0dh, 0ah, '$' ;функция 31h оставляет программу резидентной
+BEGIN_COMPLETION:
 	push ds
 	push ax
 	push dx
 	push bx
-	
-	mov ax, 4D00h
+	; подготовка выполнена, вызывается загрузчик OS:
+	mov ax, 4D00h 
 	int 21h
-
+	; если вызываемая программа не была загружена, то устанавливается
+	; флаг переноса CF = 1 и в AX заносится код ошибки
 	push ax
-	mov ax, SEG finish
+	mov ax, SEG END_MES
 	mov ds, ax
 	pop ax
+	; анализ кодов ошибки
+	lea dx, END_MES_0
+	cmp ah, 0h ; нормальное завершение
+	je WRITE_ER1
 	
-	lea dx, finish_0
-	cmp ah, 0h
-	je output_err_1
+	lea dx, END_MES_1
+	cmp ah, 1h ; завершение по CTRL-BREAK
+	je WRITE_ER1
 	
-	lea dx, finish_1
-	cmp ah, 1h
-	je output_err_1
-	
-	lea dx, finish_2
+	lea dx, END_MES_2 ; завершение по ошибке устройства
 	cmp ah, 2h
-	je output_err_1
+	je WRITE_ER1
 	
-	lea dx, finish_3
+	lea dx, END_MES_3 ; завершение по функции 31h, оставляющей программу резидентной
 	cmp ah, 3h
 	
-output_err_1:
-	call OUTPUT_PROC
-	lea dx, finish
+WRITE_ER1:
+	call WRITE
+	lea dx, END_MES
 	mov bx, dx
 	add bx, 1Bh
 	mov byte ptr [bx], al
-	call OUTPUT_PROC
+	call WRITE
 	
 	pop bx
 	pop dx
@@ -79,53 +83,54 @@ output_err_1:
 COMPLETION_PROC ENDP
 ;----------------------------
 ERROR_PROC PROC NEAR
-	jmp begin2
-	err_2	 db 'Program was not downloaded', 0dh, 0ah, '$'
-	err_2_1	 db 'Wrong number of the function (code 1)', 0dh, 0ah, '$'
-	err_2_2  db 'File not found (code 2)', 0dh, 0ah, '$'
-	err_2_5  db 'Disk error (code 5)', 0dh, 0ah, '$'
-	err_2_8  db 'Not enought memory (code 8)', 0dh, 0ah, '$'
-	err_2_10 db 'Wrong enviroment string (code 10)', 0dh, 0ah, '$'
-	err_2_11 db 'Wrong format (code 11)', 0dh, 0ah, '$'
-begin2:
+; если вызываемая программа не была загружена, то устанавливается флаг переноса CF=1
+; и в AX заносится код ошибки
+	jmp BEGIN_ERR
+	ERR_2	 DB 'PROGRAM WAS NOT DOWNLOADED', 0DH, 0AH, '$'
+	ERR_2_1	 DB 'WRONG NUMBER OF THE FUNCTION (CODE 1)', 0DH, 0AH, '$'
+	ERR_2_2  DB 'FILE NOT FOUND (CODE 2)', 0DH, 0AH, '$'
+	ERR_2_5  DB 'DISK ERROR (CODE 5)', 0DH, 0AH, '$'
+	ERR_2_8  DB 'NOT ENOUGHT MEMORY (CODE 8)', 0DH, 0AH, '$'
+	ERR_2_10 DB 'WRONG ENVIROMENT STRING (CODE 10)', 0DH, 0AH, '$'
+	ERR_2_11 DB 'WRONG FORMAT (CODE 11)', 0DH, 0AH, '$'
+BEGIN_ERR:
 	push ds
 	push ax
 	push dx
 	
 	push ax
-	mov ax, SEG err_2
+	mov ax, SEG ERR_2
 	mov ds, ax
 	pop ax
 	
-	lea dx, err_2
-	call OUTPUT_PROC
+	lea dx, ERR_2
+	call WRITE
 	
-	lea dx, err_2_1
-	cmp ax, 1h
-	je output_err_2
+	lea dx, ERR_2_1 
+	cmp ax, 1h ; номер функции неверен
+	je WRITE_ERR_2
 
 	lea dx, err_2_2
-	cmp ax, 2h
-	je output_err_2
+	cmp ax, 2h ; файл не найден
+	je WRITE_ERR_2
 	
 	lea dx, err_2_5
-	cmp ax, 5h
-	je output_err_2
+	cmp ax, 5h ; ошибка диска
+	je WRITE_ERR_2
 	
 	lea dx, err_2_8
-	cmp ax, 8h
-	je output_err_2
+	cmp ax, 8h ; недостаточный объём памяти
+	je WRITE_ERR_2
 	
 	lea dx, err_2_10
-	cmp ax, 10h
-	je output_err_2
+	cmp ax, 10h ; неправильная строка среды
+	je WRITE_ERR_2
 	
-	lea dx, err_2_11
-	cmp ax, 11h
+	lea dx, ERR_2_11
+	cmp ax, 11h ; неверный формат
 	
-output_err_2:
-	call OUTPUT_PROC
-	
+WRITE_ERR_2:
+	call WRITE	
 	pop dx
 	pop ax
 	pop ds
@@ -138,100 +143,107 @@ Main PROC FAR
 
 	;Освобождение памяти
 	lea bx, ENDPROG
+	; если сегментный адрес среды != 0, то вызываемая программа должна
+	; сформировать область памяти в качестве среды, начинающуюся с адреса
+	; кратного 16 и поместить этот адрес в блок параметров
 	mov cl,4h
 	shr bx,cl
-	add bx,30h ;размер памяти, необходимый для лаб6
-	mov ah,4ah
-	int 21h
-	jnc success ; CF=0
+	add bx,30h ;размер памяти, необходимый для лабораторной 6
 	
-	lea dx, err_1_7
+	;код завершения формируется вызываемой программой в регистре AL
+	;перед выходом в OS с помощью функции 4Сh прерывания int 21h
+	mov ah,4AH
+	int 21h
+	; переход если  CF=0 --> программа загружена и надо обработать её завершение
+	jnc PROCESS_COMPLETION 
+	
+	lea dx, ERR_1_7
 	cmp ax, 7h
-	je output_err
-	lea dx, err_1_8
+	je WRITE_ERR
+	lea dx, ERR_1_8
 	cmp ax, 8h
-	je output_err
-	lea dx, err_1_9
-	output_err:
-		call OUTPUT_PROC
-		jmp quit
+	je WRITE_ERR
+	lea dx, ERR_1_9
+	WRITE_ERR:
+		call WRITE
+		jmp FINAL
 
-success:
+PROCESS_COMPLETION:
 	;Заполнение блока параметров
-	mov env_addr, 00h
+	mov ENVIR_ADDR, 00h
 	
 	mov ax, es
-	mov word ptr cmd, ax
-	mov word ptr cmd+2, 0080h
+	mov word ptr CMD, ax
+	mov word ptr CMD+2, 0080h
 	
-	mov word ptr seg_of_1FCB, ax
-	mov word ptr seg_of_2FCB+2, 005ch
+	mov word ptr SEG_1FCB, ax
+	mov word ptr SEG_2FCB+2, 005CH
 	
-	mov word ptr seg_of_2FCB,ax
-	mov word ptr seg_of_1FCB, 006ch
+	mov word ptr SEG_2FCB,ax
+	mov word ptr SEG_1FCB, 006CH
 	
 	;Подготовка среды, содержащей имя и путь вызываемой программмы
-	;push es
-	;push dx
-	;push bx
+	push es
+	push dx
+	push bx
 	
 	mov es, es:[2Ch]; сегментный адрес среды, передаваемый программе
 	mov si, 0
-env:
+ENVIR:
 	mov dl, es:[si]
 	cmp dl, 00h		; конец строки?
 	je EOL_	
 	inc si
-	jmp env
+	jmp ENVIR
 EOL_:
 	inc si
 	mov dl, es:[si]
 	cmp dl, 00h		;конец среды?
-	jne env
+	jne ENVIR
 	
 	add si, 03h	; si указывает на начало маршрута	
 	
 	push di
-	lea di, path_str
-path_:
+	lea di, PATH
+PATH_:
 	mov dl, es:[si]
 	cmp dl, 00h		;конец маршрута?
 	je EOL2	
 	mov [di], dl	
 	inc di			
 	inc si			
-	jmp path_
+	jmp PATH_
 EOL2:
 	sub di, 05h	
 	mov [di], byte ptr '2'	
-	mov [di+2], byte ptr 'C'
-	mov [di+3], byte ptr 'O'
-	mov [di+4], byte ptr 'M'
+	mov [di+2], byte ptr 'c'
+	mov [di+3], byte ptr 'o'
+	mov [di+4], byte ptr 'm'
 	mov [di+5], byte ptr 0h
 	
 	pop di
-	;pop bx
-	;pop ds
-	;pop es
+	pop bx
+	pop ds
+	pop es
 	
 	;Сохраняем содержимое регистров SS и SP переменных		 			
 	push ds	
-	mov keep_sp, sp		
-	mov keep_ss, ss	
+	mov KEEP_SP, sp		
+	mov KEEP_SS, ss	
 
 	mov ax, DATA
 	mov es, ax	;es:bx должен указывать на блок параметров
-	lea bx, env_addr
+	lea bx, ENVIR_ADDR
 	mov ds, ax	; ds:dx должен указывать на подготовленную строку
-	lea dx, path_str	
+	lea dx, PATH	
 	
 	mov ax, 4B00h	; Вызываем загрузчик OS
 	int 21h			
 	
 	;Восстанавливаем параметры
 	pop ds
-	mov ss, keep_ss
-	mov sp, keep_sp
+	mov ss, KEEP_SS
+	mov sp, KEEP_SP
 	
 	push ax
 	push dx
@@ -239,19 +251,19 @@ EOL2:
 	mov ax, DATA
 	mov ds, ax
 	lea dx, EOL
-	call OUTPUT_PROC
-	call OUTPUT_PROC
+	call WRITE
+	call WRITE
 	pop ds
 	pop dx
 	pop ax
 	
-	jnc null_	; CF=0
+	jnc NULL_	; CF=0
 	call ERROR_PROC
-	jmp quit
-null_:
+	jmp FINAL
+NULL_:
 	call COMPLETION_PROC
 
-quit:
+FINAL:
 	xor al, al
 	mov ah, 4ch
 	int 21h	
