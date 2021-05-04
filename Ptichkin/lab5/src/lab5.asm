@@ -39,26 +39,26 @@ START:
     mov ax, seg key_value
     mov ds, ax
 
-    in al, 60h
-    cmp al, 10h  
-    je key_f
-    cmp al, 11h  
-    je key_g
-    cmp al, 12h   
-    je key_h
+    in al, 60h ;считывание ключа
+    cmp al, 2Dh  
+    je key_x
+    cmp al, 15h  
+    je key_y
+    cmp al, 2Ch   
+    je key_z
 
     pushf
     call dword ptr cs:keep_ip
     jmp END_INTERRUPTION
 
-key_f:
-    mov key_value, '$'
+key_x:
+    mov key_value, 'a'
     jmp NEXT_KEY
-key_g:
-    mov key_value, '%'
+key_y:
+    mov key_value, 'b'
     jmp NEXT_KEY
-key_h:
-    mov key_value, '&'
+key_z:
+    mov key_value, 'c'
 
 NEXT_KEY:
     in al, 61h
@@ -104,7 +104,7 @@ END_INTERRUPTION:
 MY_INTERRUPTION ENDP
  _end:
 
-IS_INTERRUPTION_LOAD proc
+IS_INTERRUPTION_LOAD proc ;Проверка установки прерывания
     push ax
     push bx
     push si
@@ -126,7 +126,7 @@ END_PROC:
     ret
     IS_INTERRUPTION_LOAD ENDP
 
-LOAD_INTERRUPTION  proc
+LOAD_INTERRUPTION  proc   ;Cохранение стандартного обработчика прерываний и загрузка пользовательского
     push ax
     push bx
     push cx
@@ -164,8 +164,7 @@ LOAD_INTERRUPTION  proc
 ret
 LOAD_INTERRUPTION  ENDP
 
-
-UNLOAD_INTERRUPTION proc
+UNLOAD_INTERRUPTION proc  ;Восстановление старого обработчика прерывания
     cli
     push ax
     push bx
@@ -213,7 +212,7 @@ ret
 UNLOAD_INTERRUPTION ENDP
 
 
-IS_UNLOAD  proc
+IS_UNLOAD  proc  ;Проверка ввёл ли пользователь /un
     push ax
     push es
 
@@ -248,24 +247,23 @@ begin proc
     mov ax, DATA
     mov ds, ax
     mov keep_psp, es
-
-    call IS_INTERRUPTION_LOAD
-    call IS_UNLOAD
+    call IS_INTERRUPTION_LOAD   ;Проверка загрузки прерывания
+    call IS_UNLOAD  ;Проверка на введение /un 
     cmp is_unl, 1
     je unload
     mov al, is_load
     cmp al, 1
     jne load
-    mov dx, offset loaded_message
+    mov dx, offset loaded_message   ;Прерывание уже загружено
     call PRINT
     jmp end_begin
-
+;Загрузка пользовательского прерывания
 load:
     mov dx, offset load_message
     call PRINT
     call LOAD_INTERRUPTION
     jmp  end_begin
-
+;Выгрузка  пользовательского прерывания 
 unload:
     cmp  is_load, 1
     jne  not_loaded
@@ -273,7 +271,7 @@ unload:
     call PRINT
     call UNLOAD_INTERRUPTION
     jmp  end_begin
-
+;Прерывание выгружено
 not_loaded:
     mov  dx, offset not_loaded_message
     call PRINT
