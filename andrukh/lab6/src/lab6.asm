@@ -8,12 +8,12 @@ DATA segment
 					dd 0
 					dd 0
 					dd 0
-	mem_flag db 0
+	memory db 0
 	cmd db 1h, 0dh
 	pos db 128 dup(0)
-	keep_ss dw 0
-	keep_sp dw 0
-	keep_psp dw 0
+	ss_val dw 0
+	sp_val dw 0
+	psp_val dw 0
 
 	McbCrashError db 'Error! MCB crashed!', 0dh, 0ah, '$'
 	NoMemoryError db 'Error! Not enough memory!', 0dh, 0ah, '$'
@@ -46,7 +46,7 @@ PRINT proc
  	ret
 PRINT endp
 
-MEMORY_FREE proc
+FREE_MEM proc
 	push ax
 	push bx
 	push cx
@@ -63,9 +63,9 @@ MEMORY_FREE proc
 	int 21h
 
 	jnc FINISH_FREE
-	mov mem_flag, 1
+	mov memory, 1
 
-CRASH_MCB:
+MCB_DESTR:
 	cmp ax, 7
 	jne NOT_ENOUGH_MEMORY
 	mov dx, offset McbCrashError
@@ -73,17 +73,17 @@ CRASH_MCB:
 	jmp RET_F
 NOT_ENOUGH_MEMORY:
 	cmp ax, 8
-	jne ADDRESS_FAIL
+	jne ADD_TROUBLE
 	mov dx, offset NoMemoryError
 	call PRINT
 	jmp RET_F
-ADDRESS_FAIL:
+ADD_TROUBLE:
 	cmp ax, 9
 	mov dx, offset AddressError
 	call PRINT
 	jmp RET_F
 FINISH_FREE:
-	mov mem_flag, 1
+	mov memory, 1
 	mov dx, offset FreeMemoryMessage
 	call PRINT
 
@@ -93,7 +93,7 @@ RET_F:
 	pop bx
 	pop ax
 	ret
-MEMORY_FREE endp
+FREE_MEM endp
 
 LOAD proc
 	push ax
@@ -102,8 +102,8 @@ LOAD proc
 	push dx
 	push ds
 	push es
-	mov keep_sp, sp
-	mov keep_ss, ss
+	mov sp_val, sp
+	mov ss_val, ss
 
 	mov ax, DATA
 	mov es, ax
@@ -116,8 +116,8 @@ LOAD proc
 	mov ax, 4b00h
 	int 21h
 
-	mov ss, keep_ss
-	mov sp, keep_sp
+	mov ss, ss_val
+	mov sp, sp_val
 	pop es
 	pop ds
 
@@ -198,7 +198,7 @@ load_end:
 	ret
 load endp
 
-FIND_PATH proc
+WAY proc
 	push ax
 	push bx
 	push cx
@@ -207,18 +207,18 @@ FIND_PATH proc
 	push si
 	push es
 
-	mov ax, keep_psp
+	mov ax, psp_val
 	mov es, ax
 	mov es, es:[2ch]
 	mov bx, 0
 
-LOOKING_PATH:
+WAY_LOOK:
 	inc bx
 	cmp byte ptr es:[bx-1], 0
-	jne LOOKING_PATH
+	jne WAY_LOOK
 
 	cmp byte ptr es:[bx+1], 0
-	jne LOOKING_PATH
+	jne WAY_LOOK
 
 	add bx, 2
 	mov di, 0
@@ -255,7 +255,7 @@ END_FN:
 	pop bx
 	pop ax
 	ret
-FIND_PATH endp
+WAY endp
 
 BEGIN proc far
 	push ds
@@ -263,11 +263,11 @@ BEGIN proc far
 	push ax
 	mov ax, DATA
 	mov ds, ax
-	mov keep_psp, es
-	call MEMORY_FREE
-	cmp mem_flag, 0
+	mov psp_val, es
+	call FREE_MEM
+	cmp memory, 0
 	je QUIT
-	call FIND_PATH
+	call WAY
 	call LOAD
 QUIT:
 	xor al, al
