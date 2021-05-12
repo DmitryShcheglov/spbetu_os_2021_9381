@@ -5,7 +5,7 @@ MY_STACK  segment stack
  dw  256 dup(0)
 MY_STACK  ends
 
-MY_INTERRUPTION PROC FAR
+INTER PROC FAR
     jmp  Start
 
 intData:
@@ -41,26 +41,26 @@ Start:
 
     in al, 60h
     cmp al, 22h  ;g
-    je key_g
+    je val_g
     cmp al, 25h  ;k
-    je key_k
+    je val_k
     cmp al, 2Eh   ;c
-    je key_c
+    je val_c
 
     pushf
     call dword ptr cs:keep_ip
-    jmp end_interruption
+    jmp inter_end
 
-key_g:
+val_g:
     mov key_value, '*'
-    jmp next_key
-key_k:
+    jmp next
+val_k:
     mov key_value, '!'
-    jmp next_key
-key_c:
+    jmp next
+val_c:
     mov key_value, '?'
 
-next_key:
+next:
     in al, 61h
     mov ah, al
     or 	al, 80h
@@ -76,7 +76,7 @@ print_key:
     mov ch, 00h
     int 16h
     or 	al, al
-    jz 	end_interruption
+    jz 	inter_end
     mov ax, 40h
     mov es, ax
     mov ax, es:[1ah]
@@ -84,7 +84,7 @@ print_key:
     jmp print_key
 
 
-end_interruption:
+inter_end:
     pop  ds
     pop  es
     pop	 si
@@ -101,7 +101,7 @@ end_interruption:
     mov  al, 20h
     out  20h, al
     iret
-MY_INTERRUPTION endp
+INTER endp
  _end:
 
 
@@ -114,7 +114,7 @@ is_int_loaded proc
     mov  al, 09h
     int  21h
     mov  si, offset signature
-    sub  si, offset MY_INTERRUPTION
+    sub  si, offset INTER
     mov  ax, es:[bx + si]
     cmp	 ax, signature
     jne  end_proc
@@ -127,7 +127,7 @@ end_proc:
     ret
     is_int_loaded endp
 
-int_load  proc
+load_int  proc
     push ax
     push bx
     push cx
@@ -140,8 +140,8 @@ int_load  proc
     int 21h
     mov keep_cs, es
     mov keep_ip, bx
-    mov ax, seg MY_INTERRUPTION
-    mov dx, offset MY_INTERRUPTION
+    mov ax, seg INTER
+    mov dx, offset INTER
     mov ds, ax
     mov ah, 25h
     mov al, 09h
@@ -163,10 +163,10 @@ int_load  proc
     pop bx
     pop ax
 ret
-int_load  endp
+load_int  endp
 
 
-unload_interrupt proc
+unload_int proc
     cli
     push ax
     push bx
@@ -179,7 +179,7 @@ unload_interrupt proc
     mov al, 09h
     int 21h
     mov si, offset keep_ip
-    sub si, offset MY_INTERRUPTION
+    sub si, offset INTER
     mov dx, es:[bx + si]
     mov ax, es:[bx + si + 2]
 
@@ -211,7 +211,7 @@ unload_interrupt proc
     pop ax
 
 ret
-unload_interrupt endp
+unload_int endp
 
 
 is_unload_  proc
@@ -266,7 +266,7 @@ begin proc
 load:
     mov dx, offset str_load
     call PRINT
-    call int_load
+    call load_int
     jmp  end_begin
 
 unload:
@@ -274,7 +274,7 @@ unload:
     jne  not_loaded
     mov dx, offset str_unload
     call PRINT
-    call unload_interrupt
+    call unload_int
     jmp  end_begin
 
 not_loaded:
