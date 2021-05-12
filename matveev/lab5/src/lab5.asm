@@ -28,95 +28,91 @@ USR_INTER PROC FAR
 	KEEP_SS		dw 0
 	KEEP_AX		dw 0
 	KEEP_SP		dw 0
+	VAL_KEY 	db 0
 
 START_CODE:
-	mov KEEP_SS, ss
- 	mov KEEP_SP, sp
- 	mov KEEP_AX, ax
- 	mov ax, seg INT_STACK
- 	mov ss, ax
- 	mov sp, 0
- 	mov ax, KEEP_AX  
-	
-	mov ax,0040h
-	mov es,ax
-	mov al,es:[17h]
-	and al,00000010b
-	jnz stand_set
-	
-	in al,60h ;Cчитать ключ
-	cmp al, REQ_KEY_1
-	je 	CHG_1_I 
-		
-	cmp al, REQ_KEY_2
-	je 	CHG_N_T 
-		
-	cmp al, REQ_KEY_3
-	je 	CHG_3_T 
-		
-	mov ss, KEEP_SS 
- 	mov sp, KEEP_SP
-	
-	stand_set:
-		pop es
-		pop ds
-		pop dx
-		mov ax, CS:KEEP_AX
-		mov sp, CS:KEEP_SP
-		mov ss, CS:KEEP_SS
-		jmp dword ptr cs:[KEEP_IP]
-	CHG_1_I:
-		mov cl, 'I'
-		jmp do_req
-	CHG_N_T:
-		mov cl, 'N'
-		jmp do_req
-	CHG_3_T:
-		mov cl, 'T'
-		jmp do_req
+    mov KEEP_AX, ax
+    mov KEEP_SP, sp
+    mov KEEP_SS, SS
+    mov ax, seg INT_STACK
+    mov ss, ax
+    mov ax, offset INT_STACK
+    add ax, 64
+    mov sp, ax	
 
-	do_req:
-		in al,61h	;Взять значение порта управления клавиатурой
-		mov ah,al	;Сохранить его
-		or al,80h	;Установить бит разрешения для клавиатуры
-		out 61h,al	;И вывести его в управляющий порт
-		xchg ah, al	;Извлечь исходное значение порта
-		out 61h,al	;И записать его обратно
-		mov al,20h	;Послать сигнал конца прерывания контроллеру прерываний 8259 
-		out 20h,al	
-		
-		push bx
-		push cx
-		push dx	
+    push ax
+    push bx
+    push cx
+    push dx
+    push si
+    push es
+    push ds
+    mov ax, seg VAL_KEY
+    mov ds, ax
+    
+    in al, 60h ;Cчитать ключ
+    cmp al, REQ_KEY_1
+    je CHG_1_I
 	
-		mov ah, 05h ;функция, позволяющая записать символ в буфер клавиатуры
-		mov ch, 00h ;символ в CL уже занесён ранее, осталось обнулить CH	
-		int 16h
-		or 	al, al	;проверка переполнения буфера
-		jnz SKIP 	;если переполнен - идём в skip
-		jmp END_OF_USR_INTER	;иначе выходим
+    cmp al, REQ_KEY_2
+    je CHG_2_N
 	
-	SKIP: 			;очищаем буфер
-		push es
-		push si
-		mov ax, 0040h
-		mov es, ax
-		mov si, 001ah
-		mov ax, es:[si] 
-		mov si, 001ch
-		mov es:[si], ax	
-		pop si
-		pop es
-		
-	END_OF_USR_INTER:
-		pop dx    
-		pop cx
-		pop bx	
-		mov ax, KEEP_SS
-		mov ss, ax
-		mov ax, KEEP_AX
-		mov sp, KEEP_SP
-		iret
+    cmp al, REQ_KEY_3
+    je CHG_3_T
+    
+    pushf
+    call dword ptr CS:KEEP_IP
+    jmp END_OF_INT
+
+CHG_1_I:
+    mov VAL_KEY, 'I'
+    jmp do_req
+CHG_2_N:
+    mov VAL_KEY, 'N'
+    jmp do_req
+CHG_3_T:
+    mov VAL_KEY, 'T'
+
+do_req:
+    in al, 61h ;Взять значение порта управления клавиатурой
+    mov ah, al ;Сохранить его
+    or al, 80h ;Установить бит разрешения для клавиатуры
+    out 61h, al ;И вывести его в управляющий порт
+    xchg al, al ;Извлечь исходное значение порта
+    out 61h, al ;И записать его обратно
+    mov al, 20h ;Послать сигнал конца прерывания контроллеру прерываний 8259
+    out 20h, al
+  
+LOOP_PRINT:
+    mov ah, 05h
+    mov cl, VAL_KEY
+    mov ch, 00h
+    int 16h
+    or 	al, al
+    jz 	END_OF_INT
+    mov ax, 0040h
+    mov es, ax
+    mov ax, es:[1ah]
+    mov es:[1ch], ax
+    jmp LOOP_PRINT
+
+END_OF_INT:
+    pop  ds
+    pop  es
+    pop	 si
+    pop  dx
+    pop  cx
+    pop  bx
+    pop	 ax
+
+    mov  sp, KEEP_SP
+    mov  ax, KEEP_SS
+    mov  ss, ax
+    mov  ax, KEEP_AX
+
+    mov  al, 20h
+    out  20h, al
+    iret
 USR_INTER ENDP
 ;----------------------------
 last_byte:
