@@ -1,20 +1,31 @@
-.model small
-.stack 100h
-
-.code
+CODE SEGMENT
+	ASSUME CS:CODE, DS:DATA, SS:P_STACK
 
 INTERRUPT_HANDLER PROC FAR
 	jmp interrupt_handler_start
 
 	INTERRUPT_HANDLER_ID DB 0Fh, 0Fh, 0FFh, 00h
 	INTERRUPT_HANDLER_CALL_NUMBER DW 0h
+	KEEP_AX DW 0h
 	KEEP_CS DW 0h
 	KEEP_IP DW 0h
+	KEEP_SS DW 0h
+	KEEP_SP DW 0h
+	KEEP_PSP DW 0h
 	CALL_NUMBER_MESSAGE DB "Interrupt calls number: "
 	CALL_NUMBER DB "     $"
+	I_STACK DB 128 DUP(0)
 
 interrupt_handler_start:
+	mov KEEP_SS, ss
+	mov KEEP_SP, sp
+	mov KEEP_AX, ax
+	mov ax, seg I_STACK
+	mov ss, ax
+	mov sp, offset interrupt_handler_start
+	
 	push ax
+	push bx
 	push cx
 	push dx
 	push si
@@ -22,12 +33,14 @@ interrupt_handler_start:
 	push es
 
 ; Запоминаем позицию курсора
-	call GET_CURSOR
+	mov ah, 03h 
+	mov bh, 00h
+	int 10h
 	push dx
 
 ; Увеличиваем счетчик на 1
 	inc word ptr cs:[INTERRUPT_HANDLER_CALL_NUMBER]
-	
+
 ; Записываем значение счетчика в строку CALL_NUMBER
 	mov si, offset CALL_NUMBER + 4
 	mov ax, cs:[INTERRUPT_HANDLER_CALL_NUMBER]
@@ -51,102 +64,54 @@ print_count:
 	mov ax, cs
 	mov es, ax
 
-	mov cx, 24
+	mov cx, 29
 	xor dx, dx
 	mov bp, offset CALL_NUMBER_MESSAGE
-	call PRINT_STRING_ES_BP
+	mov ah, 13h 
+	mov al, 1
+	mov bh, 0
+	mov bl, 3
+	int 10h
 
-	mov cx, 5
-	mov dh, 0
-	mov dl, 24
-	mov bp, offset CALL_NUMBER
-	call PRINT_STRING_ES_BP
-	
 ; Восстанавливаем курсор
 	pop dx
-	call SET_CURSOR
+	mov ah, 02h 
+	mov bh, 00h
+	int 10h 
 
 	pop es
 	pop bp
 	pop si
 	pop dx
 	pop cx
+	pop bx
 	pop ax
-
+	
 	mov al, 20h
-	out 20h, al 
+	out 20h, al
+	
+	mov sp, KEEP_SP
+	mov ss, KEEP_SS
+	mov ax, KEEP_AX
 
 	iret
 INTERRUPT_HANDLER ENDP
 
-PRINT_STRING_ES_BP PROC NEAR 
-	push ax 
-	push bx 
-
-	mov ah, 13h 
-	mov al, 1
-	mov bh, 0
-	mov bl, 3
-	int 10h 
-
-	pop bx 
-	pop ax 
-
-	ret 
-PRINT_STRING_ES_BP ENDP 
-
-SET_CURSOR PROC NEAR 
-	push ax 
-	push bx 
-
-	mov ah, 02h 
-	mov bh, 00h
-	int 10h 
-
-	pop bx 
-	pop ax 
-
-	ret 
-SET_CURSOR ENDP
-
-GET_CURSOR PROC NEAR 
-	push ax 
-	push bx 
-
-	mov ah, 03h 
-	mov bh, 00h
-	int 10h 
-
-	pop bx 
-	pop ax 
-
-	ret
-GET_CURSOR ENDP
-
-GET_INTERRUPT_HANDLER PROC NEAR
-	push ax
-
-	mov ah, 35h
-	mov al, 1Ch
-	int 21h
-
-	pop ax
-
-	ret
-GET_INTERRUPT_HANDLER ENDP
+interrupt_handler_end:
 
 RESTORE_INTERRUPT_HANDLER PROC NEAR
 	push ax
 	push bx
 	push dx
 	push es
+	push ds
 
 ; Достаем установленный обработчик прерываний
-	call GET_INTERRUPT_HANDLER
-	push es
-	
+	mov ah, 35h
+	mov al, 1Ch
+	int 21h
+
 ; Восстанавливаем значение старого обработчика прерываний
-	push ds
 	cli
 	mov ax, es:[KEEP_CS]
 	mov dx, es:[KEEP_IP]
@@ -161,16 +126,11 @@ RESTORE_INTERRUPT_HANDLER PROC NEAR
 	call PRINT
 
 ; Освобождаем память
-	pop es
-	mov dx, es
-	mov ah, 62h
-	int 21h
-	mov ax, @code
-	sub ax, bx
-	sub dx, ax
+	mov di, offset KEEP_PSP
+	mov dx, es:[bx + di]
 	mov es, dx
-
 	mov dx, es:[2Ch]
+	
 	mov ah, 49h
 	int 21h
 
@@ -188,13 +148,15 @@ RESTORE_INTERRUPT_HANDLER ENDP
 
 SET_INTERRUPT_HANDLER PROC NEAR
 	push ax
-	push cx
+	push bx
 	push dx
 	push es
 	push ds
 
 ; Достаем установленный обработчик прерываний и сохраняем его
-	call GET_INTERRUPT_HANDLER
+	mov ah, 35h
+	mov al, 1Ch
+	int 21h
 	mov KEEP_CS, es
 	mov KEEP_IP, bx
 
@@ -214,7 +176,7 @@ SET_INTERRUPT_HANDLER PROC NEAR
 
 	pop es
 	pop dx
-	pop cx
+	pop bx
 	pop ax
 
 	ret
@@ -229,7 +191,9 @@ CHECK_INTERRUPT_HANDLER PROC NEAR
 	push ds
 
 ; Достаем установленный обработчик прерываний
-	call GET_INTERRUPT_HANDLER
+	mov ah, 35h
+	mov al, 1Ch
+	int 21h
 
 ; Проверяем сигнатуру
 	mov ax, 0
@@ -266,8 +230,9 @@ PRINT PROC NEAR
 	ret
 PRINT ENDP
 
-BEGIN:
-	mov ax, @data
+MAIN PROC FAR
+	mov KEEP_PSP, ds
+	mov ax, DATA
 	mov ds, ax
 
 	cmp byte ptr es:[81h + 1], '/'
@@ -282,7 +247,7 @@ BEGIN:
 	je handler_isnt_setted
 	call RESTORE_INTERRUPT_HANDLER
 	jmp exit
-
+	
 handler_isnt_setted:
 	mov dx, offset INTERRUPT_HANDLER_NOT_SET_MESSAGE
 	call PRINT
@@ -294,7 +259,7 @@ set_handler:
 	mov dx, offset interrupt_handler_end
 	mov cl, 4
 	shr dx, cl 
-	inc dx
+	add dx, 1Bh
 	mov ah, 31h 
 	int 21h
 	
@@ -309,13 +274,19 @@ exit:
 	xor al, al
 	mov ah, 4Ch
 	int 21h
+MAIN ENDP
 
-interrupt_handler_end:
+CODE ENDS
 
-.data
+P_STACK SEGMENT STACK
+    DW 128 DUP(0)
+P_STACK ENDS
+
+DATA SEGMENT
 	INTERRUPT_HANDLER_INSTALL_MESSAGE DB "The interrupt handler is successfully installed.", 0Dh, 0Ah, "$"
 	INTERRUPT_HANDLER_ALREADY_SET_MESSAGE DB "The interrupt handler is already installed.", 0Dh, 0Ah, "$"
 	INTERRUPT_HANDLER_RESTORE_MESSAGE DB "The interrupt handler was successfully restored.", 0Dh, 0Ah, "$"
 	INTERRUPT_HANDLER_NOT_SET_MESSAGE DB "The interrupt handler is not installed yet.", 0Dh, 0Ah, "$"
+DATA ENDS
 
-END BEGIN
+END MAIN
