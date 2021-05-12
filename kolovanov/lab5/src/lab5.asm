@@ -1,17 +1,27 @@
-.model small
-.stack 100h
-
-.code
+CODE SEGMENT
+	ASSUME CS:CODE, DS:DATA, SS:P_STACK
 
 INTERRUPT_HANDLER PROC FAR
 	jmp interrupt_handler_start
 
 	INTERRUPT_HANDLER_ID DB 0Fh, 0Fh, 0FFh, 00h
+	KEEP_AX DW 0h
 	KEEP_CS DW 0h
 	KEEP_IP DW 0h
+	KEEP_SS DW 0h
+	KEEP_SP DW 0h
+	KEEP_PSP DW 0h
 	INT_9_ADDR DD 0h
+	I_STACK DB 128 DUP(0)
 
 interrupt_handler_start:
+	mov KEEP_SS, ss
+	mov KEEP_SP, sp
+	mov KEEP_AX, ax
+	mov ax, seg I_STACK
+	mov ss, ax
+	mov sp, offset interrupt_handler_start
+	
 	push ax
 	push cx
 	
@@ -38,6 +48,9 @@ interrupt_handler_start:
 call_old_int:
 	pop cx
 	pop ax
+	mov ss, KEEP_SS
+	mov sp, KEEP_SP
+	mov ax, KEEP_AX
 	jmp dword ptr cs:[INT_9_ADDR]
 
 do_req:
@@ -75,40 +88,38 @@ write_symbol:
 end_int:
 	pop cx
 	pop ax
-
+	
+	mov al, 20h
+	out 20h, al
+	
+	mov ss, KEEP_SS
+	mov sp, KEEP_SP
+	mov ax, KEEP_AX
+	
 	iret
 INTERRUPT_HANDLER ENDP
 
-GET_INTERRUPT_HANDLER PROC NEAR
-	push ax
-
-	mov ah, 35h
-	mov al, 09h
-	int 21h
-
-	pop ax
-
-	ret
-GET_INTERRUPT_HANDLER ENDP
+interrupt_handler_end:
 
 RESTORE_INTERRUPT_HANDLER PROC NEAR
 	push ax
 	push bx
 	push dx
 	push es
+	push ds
 
 ; Достаем установленный обработчик прерываний
-	call GET_INTERRUPT_HANDLER
-	push es
+	mov ah, 35h
+	mov al, 1Ch
+	int 21h
 
 ; Восстанавливаем значение старого обработчика прерываний
-	push ds
 	cli
 	mov ax, es:[KEEP_CS]
 	mov dx, es:[KEEP_IP]
 	mov ds, ax 
 	mov ah, 25h
-	mov al, 09h 
+	mov al, 1Ch 
 	int 21h
 	sti
 	pop ds
@@ -117,16 +128,11 @@ RESTORE_INTERRUPT_HANDLER PROC NEAR
 	call PRINT
 
 ; Освобождаем память
-	pop es
-	mov dx, es
-	mov ah, 62h
-	int 21h
-	mov ax, @code
-	sub ax, bx
-	sub dx, ax
+	mov di, offset KEEP_PSP
+	mov dx, es:[bx + di]
 	mov es, dx
-
 	mov dx, es:[2Ch]
+	
 	mov ah, 49h
 	int 21h
 
@@ -144,13 +150,15 @@ RESTORE_INTERRUPT_HANDLER ENDP
 
 SET_INTERRUPT_HANDLER PROC NEAR
 	push ax
-	push cx
+	push bx
 	push dx
 	push es
 	push ds
 
 ; Достаем установленный обработчик прерываний и сохраняем его
-	call GET_INTERRUPT_HANDLER
+	mov ah, 35h
+	mov al, 1Ch
+	int 21h
 	mov KEEP_CS, es
 	mov KEEP_IP, bx
 	mov word ptr INT_9_ADDR, bx
@@ -162,7 +170,7 @@ SET_INTERRUPT_HANDLER PROC NEAR
 	mov dx, offset INTERRUPT_HANDLER
 	mov ds, ax 
 	mov ah, 25h 
-	mov al, 09h
+	mov al, 1Ch
 	int 21h
 	sti
 
@@ -172,7 +180,7 @@ SET_INTERRUPT_HANDLER PROC NEAR
 
 	pop es
 	pop dx
-	pop cx
+	pop bx
 	pop ax
 
 	ret
@@ -187,7 +195,9 @@ CHECK_INTERRUPT_HANDLER PROC NEAR
 	push ds
 
 ; Достаем установленный обработчик прерываний
-	call GET_INTERRUPT_HANDLER
+	mov ah, 35h
+	mov al, 1Ch
+	int 21h
 
 ; Проверяем сигнатуру
 	mov ax, 0
@@ -224,8 +234,9 @@ PRINT PROC NEAR
 	ret
 PRINT ENDP
 
-BEGIN:
-	mov ax, @data
+MAIN PROC FAR
+	mov KEEP_PSP, ds
+	mov ax, DATA
 	mov ds, ax
 
 ; Проверяем наличие флага /un
@@ -241,7 +252,7 @@ BEGIN:
 	je handler_isnt_setted
 	call RESTORE_INTERRUPT_HANDLER
 	jmp exit
-	
+
 ; Обработчик прерывания не установлен
 handler_isnt_setted:
 	mov dx, offset INTERRUPT_HANDLER_NOT_SET_MESSAGE
@@ -255,7 +266,7 @@ set_handler:
 	mov dx, offset interrupt_handler_end
 	mov cl, 4
 	shr dx, cl 
-	inc dx
+	add dx, 1Bh
 	mov ah, 31h 
 	int 21h
 
@@ -272,13 +283,19 @@ exit:
 	xor al, al
 	mov ah, 4Ch
 	int 21h
+MAIN ENDP
 
-interrupt_handler_end:
+CODE ENDS
 
-.data
+P_STACK SEGMENT STACK
+	DW 128 DUP(0)
+P_STACK ENDS
+
+DATA SEGMENT
 	INTERRUPT_HANDLER_INSTALL_MESSAGE DB "The interrupt handler is successfully installed.", 0Dh, 0Ah, "$"
 	INTERRUPT_HANDLER_ALREADY_SET_MESSAGE DB "The interrupt handler is already installed.", 0Dh, 0Ah, "$"
 	INTERRUPT_HANDLER_RESTORE_MESSAGE DB "The interrupt handler was successfully restored.", 0Dh, 0Ah, "$"
 	INTERRUPT_HANDLER_NOT_SET_MESSAGE DB "The interrupt handler is not installed yet.", 0Dh, 0Ah, "$"
+DATA ENDS
 
-END BEGIN
+END MAIN
