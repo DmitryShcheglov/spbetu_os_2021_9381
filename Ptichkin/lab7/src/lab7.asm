@@ -5,9 +5,18 @@ STACK SEGMENT STACK
 STACK ENDS
 
 DATA SEGMENT
+	OVL_first db "ovl1.ovl", 0
+	OVL_second db "ovl2.ovl", 0
+	ovl_address dd 0	
+	DTA_memory db 43 DUP(0)
+	flag_memory db 0
+	program DW 0
+	CL_pos db 128 DUP(0)
+	keep_psp DW 0
+
 	EOF db 0dh, 0ah, '$'
 	Error_file_message db 'Error! File not found!', 0dh, 0ah, '$' 
-	Error_not_enough_mem_message db 'Eror! Not enough memory!', 0dh, 0ah, '$' 
+	Error_not_enough_mem_message db 'Error! Not enough memory!', 0dh, 0ah, '$' 
 	Error_route_message db 'Error! Route not found!', 0dh, 0ah, '$' 
 	Error_mcb_crash_message db 'Error! MCB crashed!', 0dh, 0ah, '$' 
 	Error_address_message db 'Error! Wrong memory address', 0dh, 0ah, '$'
@@ -20,15 +29,6 @@ DATA SEGMENT
 	Success_load_message db  'Loaded successfully', 0dh, 0ah, '$'
 	Success_mem_alloc_message db  'Memory was successfully allocated', 0dh, 0ah, '$'
 	end_data db 0
-	
-	OVL_first db "ovl1.ovl", 0
-	OVL_second db "ovl2.ovl", 0
-	ovl_address dd 0	
-	DTA_memory db 43 DUP(0)
-	flag_memory db 0
-	program DW 0
-	CL_pos db 128 DUP(0)
-	keep_psp DW 0
 	
 DATA ENDS
 
