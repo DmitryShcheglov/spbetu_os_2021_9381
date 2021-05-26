@@ -26,7 +26,19 @@ interr PROC FAR
 		KEEP_IP dw 0                                  ;9
 		interr_set dw 0FEDCh                 ;11
 		count db 'Interrupts call count: 0000  $' ;13
+		KEEP_SS DW 0							
+		KEEP_SP DW 0							
+		KEEP_AX DW 0
+		miniStack dw 12 dup(?) ;стек прерываний
 	start:
+
+		mov KEEP_SP, sp 
+		mov KEEP_AX, ax
+		mov KEEP_SS, ss
+		mov sp, offset start
+		mov ax, seg miniStack
+		mov ss, ax
+
 		push ax      
 		push bx
 		push cx
@@ -113,6 +125,9 @@ interr PROC FAR
 		pop bx
 		pop ax     
 
+		mov ss, KEEP_SS
+		mov ax, KEEP_AX
+		mov sp, KEEP_SP
 		iret
 interr ENDP
 
