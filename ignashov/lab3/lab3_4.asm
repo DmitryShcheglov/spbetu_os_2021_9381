@@ -140,17 +140,6 @@ main:
 	mov	dx, offset endl
 	call	PRINT
 
-;free
-    mov 	ax,offset SegEnd
-    mov 	bx, 10h
-    xor 	dx, dx
-    div 	bx
-    inc 	ax
-    mov 	bx, ax
-    mov 	al, 0
-    mov 	ah, 4Ah
-    int 	21h
-
 ;allocate
 	xor		ax, ax
 	mov		ah, 48h	
@@ -162,6 +151,17 @@ main:
 	mov		dx,	offset endl
 	call	PRINT
 mem:
+
+;free
+    mov 	ax,offset SegEnd
+    mov 	bx, 10h
+    xor 	dx, dx
+    div 	bx
+    inc 	ax
+    mov 	bx, ax
+    mov 	al, 0
+    mov 	ah, 4Ah
+    int 	21h
 	
 ;extended
 	mov	al, 30h

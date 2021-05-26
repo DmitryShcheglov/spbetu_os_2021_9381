@@ -12,7 +12,6 @@ start:
 	MCBtype db 'MCB type: 00h$'
 	PSPadr 	db 'PSP adress: 0000h$'
 	s 	db 'Size:          b$'
-    error db 'ERROR!'
     endl	db  13, 10, '$'
     tab		db 	9,'$'
 
@@ -139,29 +138,6 @@ main:
 	call 	PRINT
 	mov	dx, offset endl
 	call	PRINT
-
-;allocate
-	xor		ax, ax
-	mov		ah, 48h	
-	mov		bx, 1000h
-	int		21h
-	jnc		mem
-	mov		dx, offset error
-	call	PRINT
-	mov		dx,	offset endl
-	call	PRINT
-mem:
-
-;free
-    mov 	ax,offset SegEnd
-    mov 	bx, 10h
-    xor 	dx, dx
-    div 	bx
-    inc 	ax
-    mov 	bx, ax
-    mov 	al, 0
-    mov 	ah, 4Ah
-    int 	21h
 	
 ;extended
 	mov	al, 30h
@@ -261,6 +237,5 @@ quit:
     mov 	ah, 4ch
     int 	21h
 
-SegEnd:
 PCinfo	ENDS
 		END    START

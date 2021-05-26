@@ -138,6 +138,17 @@ main:
 	call 	PRINT
 	mov	dx, offset endl
 	call	PRINT
+
+;free
+    mov 	ax,offset SegEnd
+    mov 	bx, 10h
+    xor 	dx, dx
+    div 	bx
+    inc 	ax
+    mov 	bx, ax
+    mov 	al, 0
+    mov 	ah, 4Ah
+    int 	21h
 	
 ;extended
 	mov	al, 30h
@@ -237,5 +248,6 @@ quit:
     mov 	ah, 4ch
     int 	21h
 
+SegEnd:
 PCinfo	ENDS
 		END    START

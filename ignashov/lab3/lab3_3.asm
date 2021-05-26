@@ -12,6 +12,7 @@ start:
 	MCBtype db 'MCB type: 00h$'
 	PSPadr 	db 'PSP adress: 0000h$'
 	s 	db 'Size:          b$'
+    error db 'ERROR!'
     endl	db  13, 10, '$'
     tab		db 	9,'$'
 
@@ -149,6 +150,18 @@ main:
     mov 	al, 0
     mov 	ah, 4Ah
     int 	21h
+
+;allocate
+	xor		ax, ax
+	mov		ah, 48h	
+	mov		bx, 1000h
+	int		21h
+	jnc		mem
+	mov		dx, offset error
+	call	PRINT
+	mov		dx,	offset endl
+	call	PRINT
+mem:
 	
 ;extended
 	mov	al, 30h
