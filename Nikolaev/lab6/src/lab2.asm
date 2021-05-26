@@ -155,3 +155,4 @@ CYCLE_PATH:
 	mov ah, 4Ch
 	int 21h
   TESTPC ENDS
+END START
