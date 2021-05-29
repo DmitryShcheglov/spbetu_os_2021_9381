@@ -13,7 +13,7 @@ git remote add ImSOLty                   https://github.com/ImSOLty/spbetu_os_20
 git remote add YudjinSud                 https://github.com/YudjinSud/spbetu_os_2021_9381.git          # Судаков 
 git remote add Dmitrydavka               https://github.com/Dmitrydavka/spbetu_os_2021_9381.git        # Давыдов
 git remote add PribylovNikita            https://github.com/PribylovNikita/spbetu_os_2021_9381.git     # Прибылов
-#git remote add                           https://github.com//spbetu_os_2021_9381.git                  # 
+git remote add DerzoMelon                https://github.com/DerzoMelon/spbetu_os_2021_9381.git         # Авдеев
 #git remote add                           https://github.com//spbetu_os_2021_9381.git                  # 
 #git remote add                           https://github.com//spbetu_os_2021_9381.git                  # 
 #git remote add                           https://github.com//spbetu_os_2021_9381.git                  # 

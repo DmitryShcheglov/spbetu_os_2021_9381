@@ -13,7 +13,7 @@ git fetch ImSOLty         # Игнашов
 git fetch YudjinSud       # Судаков  
 git fetch Dmitrydavka     # Давыдов 
 git fetch PribylovNikita  # Прибылов 
-#git fetch                 # 
+git fetch DerzoMelon      # Авдеев
 #git fetch                 # 
 #git fetch                 # 
 #git fetch                 # 
