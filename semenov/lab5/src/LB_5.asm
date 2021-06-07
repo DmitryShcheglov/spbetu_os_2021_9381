@@ -1,257 +1,307 @@
-.Model small
-.DATA
-string db "Message$"
-strld db 13, 10, "Resident loaded$", 13, 10
-struld db 13, 10, "Resident unloaded$"
-strald db 13, 10, "Resident is already loaded$"
-PSP dw ?
-isUd db ?
-isloaded db ?
-sg dw ?
-num db 0
-KEEP_CS DW ? ; для хранения сегмента
-KEEP_IP DW ? ; и смещения вектора прерывания
-.STACK 400h
-.CODE
-resID dw 0ff00h
-;-----------------------------------
+ASSUME CS:CODE, DS:DATA, SS:ASTACK
+
+ASTACK SEGMENT STACK 
+	DW 64 DUP(?)
+ASTACK ENDS
+
+CODE SEGMENT
+;----------------------------
+WRITE PROC NEAR ;Р’С‹РІРѕРґ РЅР° СЌРєСЂР°РЅ СЃРѕРѕР±С‰РµРЅРёСЏ
+		push ax
+		mov  ah, 09h
+	    int  21h
+	    pop	 ax
+	    ret
+WRITE ENDP
+;----------------------------
 ROUT PROC FAR
-	mov cs:[typeKey], 0
-	in al, 60h
-	cmp al, 10h  ;\\ 
-	jl oldint9 ;   q w e r t y u i o p 
-	cmp al, 19h ;//
-	jle do_req1
-	inc cs:[typeKey]
-	cmp al, 49 ; N
-	je do_req
-	inc cs:[typeKey]
-	cmp al, 14 ; backspace
-	je do_req
-	do_req1:
-		push ax
-		push es
-		xor ax, ax
-		mov es, ax
-		mov al, es:[417h]
-		pop es
-		and al, 1000b ; левый/правый sft нажат или активен cps lock?
-		pop ax
-		jnz do_req
-	oldint9:
-		jmp dword ptr cs:[Int9_vect];
-	do_req: 
-		push ax
-		;следующий код необходим для отработки аппаратного прерывания
-		in al, 61h   ;взять значение порта управления клавиатурой
-		mov ah, al     ; сохранить его
-		or al, 80h    ;установить бит разрешения для клавиатуры
-		out 61h, al    ; и вывести его в управляющий порт
-		xchg ah, al    ;извлечь исходное значение порта
-		out 61h, al    ;и записать его обратно
-		mov al, 20h     ;послать сигнал "конец прерывания"
-		out 20h, al     ; контроллеру прерываний 8259
-	l16h:
-		pop ax
-		mov ah, 05h  ; Код функции
-		cmp cs:[typeKey], 0
-		je key1
-		cmp cs:[typeKey], 1
-		je key2
-		cmp cs:[typeKey], 2
-		je key3
-	key1:
-		push ax
-		push es
-		xor ax, ax
-		mov es, ax
-		mov al, es:[417h]
-		pop es
-		and al, 1000b ; левый/правый sft нажат или активен cps lock?
-		jnz isalt
-		pop ax
-		jmp dword ptr cs:[Int9_vect];
-	isalt:
-		pop ax
-		mov cl, 0B0h
-		add cl, al
-		sub cl, 0Fh ;Если цифра q-p и нажат alt выводим символы псевдографики
-		jmp writeKey 
-	key2:
-		push ax
-		push es
-		xor ax, ax
-		mov es, ax
-		mov al, es:[417h]
-		pop es
-		and al, 01000011b ; левый/правый sft нажат или активен cps lock?
-		jnz big
-		pop ax
-		mov cl, 'n'
-		jmp writeKey
-	big:
-		pop ax
-		mov cl, 'N' ; Пишем символ в буфер клавиатуры
-		jmp writeKey
-	key3:
-		mov cl, 'D'
-		jmp notcls
-	writeKey:
-		mov ch,00h ; 
-		int 16h ;
-		or al, al ; проверка переполнения буфера
-		jnz clsbuf ; если переполнен идем skip
-		jmp notcls
-		; работать дальше
-	clsbuf:  ; очистить буфер и повторить
-		push es
-		CLI	;запрещаем прерывания
-		xor ax, ax
-		MOV es, ax	
-		MOV al, es:[41AH];\\	
-		MOV es:[41CH], al;- head=tail 	
-		STI	;разрешаем прерывания
-		pop es
-	notcls:
-		IRET		
-		Int9_vect dd ?		
-		typeKey db 0 ; 0 if q-p , 1 if n , 2 if del
-ROUT  ENDP  
-;-----------------------------------
-IsUnload PROC
-	;Tail of command line
+	jmp start_code
+	addr_psp1   dw 0 ;offset 3
+	addr_psp2   dw 0 ;offset 5
+	keep_ip 	dw 0 ;offset 7
+	keep_cs 	dw 0 ;offset 9
+	sign 	dw 0abcdh ;offset 11
+	req_key_1	db 02h
+	req_key_2	db 03h
+	req_key_3	db 04h
+	int_stack	dw 64 dup (?)
+	keep_ss		dw 0
+	keep_ax		dw 0
+	keep_sp		dw 0
+	typeKey 	db 0
+
+start_code:
+    mov keep_ax, ax
+    mov keep_sp, sp
+    mov keep_ss, ss
+    mov ax, seg int_stack
+    mov ss, ax
+    mov ax, offset int_stack
+    add ax, 64
+    mov sp, ax	
+
+    push ax
+    push bx
+    push cx
+    push dx
+    push si
+    push es
+    push ds
+    mov ax, seg typeKey
+    mov ds, ax
+    
+    in al, 60h ;cС‡РёС‚Р°С‚СЊ РєР»СЋС‡
+    cmp al, req_key_1
+    je chg_1_p
+	
+    cmp al, req_key_2
+    je chg_2_i
+	
+    cmp al, req_key_3
+    je chg_3_k
+    
+    pushf
+    call dword ptr cs:keep_ip
+    jmp end_of_int
+
+chg_1_p:
+    mov typeKey, 'p'
+    jmp do_req
+chg_2_i:
+    mov typeKey, 'i'
+    jmp do_req
+chg_3_k:
+    mov typeKey, 'k'
+
+do_req:
+    in al, 61h ;РІР·СЏС‚СЊ Р·РЅР°С‡РµРЅРёРµ РїРѕСЂС‚Р° СѓРїСЂР°РІР»РµРЅРёСЏ РєР»Р°РІРёР°С‚СѓСЂРѕР№
+    mov ah, al ;СЃРѕС…СЂР°РЅРёС‚СЊ РµРіРѕ
+    or al, 80h ;СѓСЃС‚Р°РЅРѕРІРёС‚СЊ Р±РёС‚ СЂР°Р·СЂРµС€РµРЅРёСЏ РґР»СЏ РєР»Р°РІРёР°С‚СѓСЂС‹
+    out 61h, al ;Рё РІС‹РІРµСЃС‚Рё РµРіРѕ РІ СѓРїСЂР°РІР»СЏСЋС‰РёР№ РїРѕСЂС‚
+    xchg al, al ;РёР·РІР»РµС‡СЊ РёСЃС…РѕРґРЅРѕРµ Р·РЅР°С‡РµРЅРёРµ РїРѕСЂС‚Р°
+    out 61h, al ;Рё Р·Р°РїРёСЃР°С‚СЊ РµРіРѕ РѕР±СЂР°С‚РЅРѕ
+    mov al, 20h ;РїРѕСЃР»Р°С‚СЊ СЃРёРіРЅР°Р» РєРѕРЅС†Р° РїСЂРµСЂС‹РІР°РЅРёСЏ РєРѕРЅС‚СЂРѕР»Р»РµСЂСѓ РїСЂРµСЂС‹РІР°РЅРёР№ 8259
+    out 20h, al
+  
+writeKey:
+    mov ah, 05h
+    mov cl, typeKey
+    mov ch, 00h
+    int 16h
+    or 	al, al
+    jz 	end_of_int
+    mov ax, 0040h
+    mov es, ax
+    mov ax, es:[1ah]
+    mov es:[1ch], ax
+    jmp writeKey
+
+end_of_int:
+    pop  ds
+    pop  es
+    pop	 si
+    pop  dx
+    pop  cx
+    pop  bx
+    pop	 ax
+
+    mov  sp, keep_sp
+    mov  ax, keep_ss
+    mov  ss, ax
+    mov  ax, keep_ax
+
+    mov  al, 20h
+    out  20h, al
+    iret
+ROUT ENDP
+;----------------------------
+last_byte:
+IsLoad PROC NEAR	;РџСЂРѕРІРµСЂРєР° СѓСЃС‚Р°РЅРѕРІРєРё РїСЂРµСЂС‹РІР°РЅРёСЏ
+	push bx
+	push dx
 	push es
-	push ax
-	mov ax, psp
-	mov es, ax
-	mov cl, es:[80h]
-	mov dl, cl
-	xor ch, ch
-	test cl, cl	
-	jz ex2
-	xor di, di
-	readChar:
-		inc di
-		mov al, es:[81h+di]
-		inc di
-		cmp al, '/'
-		jne ex2
-		mov al, es:[81h+di]
-		inc di
-		cmp al, 'u'
-		jne ex2
-		mov al, es:[81h+di]
-		cmp al, 'n'
-		jne ex2
-		mov isUd, 1 ; if is unloading resident
-	ex2:
-		pop ax
-		pop es
-		ret
-IsUnload ENDP
-;-----------------------------------
-IsAlreadyLoad PROC
-	push es
-	mov ax, 3509h ; функция получения вектора
+
+	mov ah, 35h	;РїРѕР»СѓС‡РµРЅРёРµ РІРµРєС‚РѕСЂР° РїСЂРµСЂС‹РІР°РЅРёР№
+	mov al, 09h	;С„СѓРЅРєС†РёСЏ РІС‹РґР°РµС‚ Р·РЅР°С‡РµРЅРёРµ СЃРµРіРјРµРЅС‚Р° РІ es, СЃРјРµС‰РµРЅРёРµ РІ bx
 	int 21h
-	mov dx, es:[bx-2]
+
+	mov dx, es:[bx + 11]
+	cmp dx, 0abcdh ;РїСЂРѕРІРµСЂРєР° РЅР° СЃРѕРІРїР°РґРµРЅРёРµ РєРѕРґР° РїСЂРµСЂС‹РІР°РЅРёСЏ 
+	je installed
+	mov al, 00h
+	jmp end_is_load
+
+installed: ; РїСЂРѕС†РµРґСѓСЂР° РІРµСЂРЅС‘С‚ 1 РµСЃР»Рё РїСЂРµСЂС‹РІР°РЅРёРµ СѓСЃС‚Р°РЅРѕРІР»РµРЅРѕ
+	mov al, 01h
+	jmp end_is_load
+
+end_is_load:
 	pop es
-	cmp dx, resId
-	je ad
-	jmp exd
-	ad:
-		mov isloaded, 1
-	exd:
-		ret
-IsAlreadyLoad ENDP
-;-----------------------------------
-UnLoad proc
+	pop dx
+	pop bx
+	ret
+IsLoad ENDP
+;----------------------------
+IsUnLoad PROC NEAR ;РџСЂРѕРІРµСЂРєР° РЅР° С‚Рѕ, РЅРµ РІРІС‘Р» Р»Рё РїРѕР»СЊР·РѕРІР°С‚РµР»СЊ /un
 	push es
-	mov ax, sg
+	mov ax, ADDR_PSP1
 	mov es, ax
-	mov DX, word ptr es:Int9_vect
-	mov ax, word ptr es:Int9_vect+2
-	mov KEEP_IP, dx
-	mov KEEP_CS, ax
+
+	cmp byte ptr es:[82h], '/'		
+	jne end_un_check
+	cmp byte ptr es:[83h], 'u'		
+	jne end_un_check
+	cmp byte ptr es:[84h], 'n'
+	jne end_un_check
+	mov al, 1h
+
+end_un_check:
 	pop es
-	CLI
+	ret
+IsUnLoad ENDP
+;----------------------------
+LoadResident PROC NEAR ;CРѕС…СЂР°РЅРµРЅРёРµ СЃС‚Р°РЅРґР°СЂС‚РЅРѕРіРѕ РѕР±СЂР°Р±РѕС‚С‡РёРєР° РїСЂРµСЂС‹РІР°РЅРёР№ Рё Р·Р°РіСЂСѓР·РєР° РїРѕР»СЊР·РѕРІР°С‚РµР»СЊСЃРєРѕР№ РІРµСЂСЃРёРё
+	push ax
+	push bx
+	push dx
+	push es
+	; РїРѕР»СѓС‡Р°РµРј Р°РґСЂРµСЃ РѕР±СЂР°Р±РѕС‚С‡РёРєР° РїСЂРµСЂС‹РІР°РЅРёСЏ (СЃС‚Р°СЂРѕРіРѕ) РґР»СЏ С‚РѕРіРѕ С‡С‚РѕР±С‹ СЃРѕС…СЂР°РЅРёС‚СЊ
+	mov ah, 35h ;С„СѓРЅРєС†РёСЏ РїРѕР»СѓС‡РµРЅРёСЏ РІРµРєС‚РѕСЂР°
+	mov al, 09h ; РЅРѕРјРµСЂ РІРµРєС‚РѕСЂР°
+	int 21h
+	; РЅР° РІС‹С…РѕРґРµ РІ ES:BX = Р°РґСЂРµСЃ РѕР±СЂР°Р±РѕС‚С‡РёРєР° РїСЂРµСЂС‹РІР°РЅРёСЏ
+	;РІРѕР·РІСЂР°С‰Р°РµС‚ Р·РЅР°С‡РµРЅРёРµ РІРµРєС‚РѕСЂР° РїСЂРµСЂС‹РІР°РЅРёСЏ РґР»СЏ INT (AL);
+	mov KEEP_IP, bx	;Р—Р°РїРѕРјРёРЅР°РµРј СЃРјРµС‰РµРЅРёРµ Рё СЃРµРіРјРµРЅС‚
+	mov KEEP_CS, es
+
 	push ds
-	mov dx, KEEP_IP
-	mov ax, KEEP_CS
+	lea dx, ROUT
+	mov ax, seg ROUT
+	mov ds, ax
+	mov ah, 25h ; С„СѓРЅРєС†РёСЏ СѓСЃС‚Р°РЅРѕРІРєРё РІРµРєС‚РѕСЂР° 
+	mov al, 09h ; РЅРѕРјРµСЂ РІРµРєС‚РѕСЂР°
+	int 21h     ; РјРµРЅСЏРµРј РїСЂРµСЂС‹РІР°РЅРёРµ
+	pop ds
+
+	lea dx, strld 
+	call WRITE 
+
+	pop es
+	pop dx
+	pop bx
+	pop ax
+	
+	ret
+LoadResident ENDP
+;----------------------------
+UnLoad PROC NEAR	;Р’С‹РіСЂСѓР·РєР° РѕР±СЂР°Р±РѕС‚С‡РёРєР° РїСЂРµСЂС‹РІР°РЅРёСЏ (РІРѕСЃСЃС‚Р°РЅРѕРІР»РµРЅРµРЅРёРµ СЃС‚Р°СЂРѕРіРѕ)
+	push ax
+	push bx
+	push dx
+	push es
+	
+	mov ah, 35h
+	mov al, 09h
+	int 21h
+
+	cli;СЃР±СЂР°СЃС‹РІР°РµС‚ С„Р»Р°Рі РїСЂРµСЂС‹РІР°РЅРёСЏ РІ СЂРµРіРёСЃС‚СЂРµ С„Р»Р°РіРѕРІ. 
+	;РљРѕРіРґР° СЌС‚РѕС‚ С„Р»Р°Рі СЃР±СЂРѕС€РµРЅ, РїСЂРѕС†РµСЃСЃРѕСЂ РёРіРЅРѕСЂРёСЂСѓРµС‚ РІСЃРµ РїСЂРµСЂС‹РІР°РЅРёСЏ (РєСЂРѕРјРµ NMI)РѕС‚ РІРЅРµС€РЅРёС… СѓСЃС‚СЂРѕР№СЃС‚РІ
+	push ds            
+	mov dx, es:[bx + 7]   
+	mov ax, es:[bx + 9]   
 	mov ds, ax
 	mov ah, 25h
 	mov al, 09h
-	int 21h          ; восстанавливаем вектор
+	int 21h
 	pop ds
-	STI
-	ret
-Unload endp
-;-----------------------------------
-MakeResident proc
-	lea dx, strld
-	call WRITE
-	lea dx, temp
-	sub dx, psp
-	mov cl, 4
-	shr dx, cl
-	mov Ax, 3100h
-	int 21h
-	ret
-MakeResident Endp
-;-----------------------------------
-WRITE PROC
-	push ax
-	mov ah, 09h
-	int 21h
-	pop ax
-	ret
-WRITE ENDP
-;-----------------------------------
-Main PROC  FAR 
-	mov ax, ds
-	mov ax, @DATA		  
-	mov ds, ax
-	mov ax, es
-	mov psp, ax
-
-	call isAlreadyLoad
+	sti
 	
-	call isUnload
+	lea dx, struld
+	call WRITE 
 
-	cmp isloaded, 1
-	je a
-	mov ax, 3509h ; функция получения вектора
+	push es ;РЈРґР°Р»РµРЅРёРµ MCB
+	mov cx,es:[bx+3]
+	mov es,cx
+	mov ah,49h ; РћСЃРІРѕР±РѕРґРёС‚СЊ СЂР°СЃРїСЂРµРґРµР»РµРЅРЅС‹Р№ Р±Р»РѕРє РїР°РјСЏС‚Рё
 	int 21h
-	mov KEEP_IP, bx  ; запоминание смещения
-	mov KEEP_CS, es  ; и сегмента вектора прерывания
-	mov word ptr int9_vect+2, es
-	mov word ptr int9_vect, bx
+	
+	pop es
+	mov cx,es:[bx+5]
+	mov es,cx ; es - СЃРµРіРјРµРЅС‚РЅС‹Р№ Р°РґСЂРµСЃ (РїР°СЂР°РіСЂР°С„) РѕСЃРІРѕР±РѕР¶РґР°РµРјРѕРіРѕ Р±Р»РѕРєР° РїР°РјСЏС‚Рё
+	int 21h
 
-	push ds
-	mov dx, OFFSET ROUT ; смещение для процедуры в DX
-	mov ax, SEG ROUT    ; сегмент процедуры
-	mov ds, ax          ; помещаем в DS
-	mov ax, 2509h         ; функция установки вектора
-	int 21H             ; меняем прерывание
-	pop ds
-	call MakeResident
-	a:
-		cmp isud, 1
-		jne b
-		call unload
-		lea dx, struld
-		call WRITE
-		mov ah, 4ch                        
-		int 21h   
-	b:
-		lea dx, strald
-		call WRITE
-		mov ah, 4ch                        
-		int 21h                             
-Main ENDP
+	pop es
+	pop dx
+	pop bx
+	pop ax
+	
+	mov ah, 4Ch	;Р’С‹С…РѕРґ РёР· РїСЂРѕРіСЂР°РјРјС‹ С‡РµСЂРµР· С„СѓРЅРєС†РёСЋ 4C
+	int 21h
+	ret
+UnLoad ENDP
+;----------------------------
+MAIN  PROC FAR
+    mov bx,2Ch
+	mov ax,[bx]
+	mov ADDR_PSP2,ax
+	mov ADDR_PSP1,ds  ;СЃРѕС…СЂР°РЅРµРЅРёРµ PSP
+	mov dx, ds 
+	xor ax,ax    
+	xor bx,bx
+	mov ax,data  
+	mov ds,ax 
+	xor dx, dx
 
-TEMP PROC
-TEMP ENDP
+	call IsUnLoad ;РџСЂРѕРІРµСЂРєР° РЅР° РІРІРµРґРµРЅРёРµ /un 
+	cmp al, 01h
+	je try_to_unload		
 
-END Main
-		  
+
+	call IsLoad  ;РџСЂРѕРІРµСЂРєР° РЅРµ СЏРІР»СЏРµС‚СЃСЏ Р»Рё РїСЂРѕРіСЂР°РјРјР° СЂРµР·РёРґРµРЅС‚РЅРѕР№
+	cmp al, 01h
+	jne need_to_redef
+
+already_installed:
+	lea dx, strald ;РџСЂРѕРіСЂР°РјРјР° СѓР¶Рµ Р·Р°РіСЂСѓР¶РµРЅР°
+	call WRITE
+	jmp end_of_main
+
+;Р—Р°РіСЂСѓР·РєР° РїРѕР»СЊР·РѕРІР°С‚РµР»СЊСЃРєРѕРіРѕ РїСЂРµСЂС‹РІР°РЅРёСЏ
+need_to_redef: 
+	call LoadResident 
+	lea dx, last_byte
+	mov cl, 04h
+	shr dx, cl
+	add dx, 1Bh
+	mov ax, 3100h
+	int 21h
+	
+;Р’С‹РіСЂСѓР·РєР°  РїРѕР»СЊР·РѕРІР°С‚РµР»СЊСЃРєРѕРіРѕ РїСЂРµСЂС‹РІР°РЅРёСЏ    
+try_to_unload:
+	call isload
+	cmp al, 1h
+	jne not_loaded
+	call unload
+	jmp end_of_main
+
+;РџСЂРµСЂС‹РІР°РЅРёРµ РІС‹РіСЂСѓР¶РµРЅРѕ
+not_loaded: 
+	lea dx, strnld
+	call write
+	
+end_of_main:
+	mov ah, 4ch
+	int 21h
+MAIN  	ENDP
+
+CODE 	ENDS
+DATA SEGMENT
+	strld   db 'Resident loaded', 0dh, 0ah, '$'
+    strnld db 'Resident is not loaded', 0dh, 0ah, '$'
+   	strald db 'Resident is already loaded', 0dh, 0ah, '$'
+	struld		db 'Resident is unloaded', 0dh, 0ah, '$'
+DATA ENDS
+
+
+END Main 
+
