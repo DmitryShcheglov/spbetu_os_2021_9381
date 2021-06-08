@@ -1,8 +1,7 @@
 .model small
 .data
-st_docher_uspeh db 13, 10, "Process was end successfully, code: $"
+st_docher_uspeh db 13, 10, "Process was finished successfully, code: $"
 st_file_otst db 13, 10, "ERROR: No file", 13, 10, "$"
-st_docher_ctrlc db 13, 10, "Process was end with ctrl+c$"
 psp dw ?
 filename db 50 dup(0)
 eol db "$"
@@ -67,9 +66,7 @@ exitProg PROC
 	lea bx, st_docher_uspeh
 	mov [bx], ax
 	lea dx, st_docher_uspeh
-	push ax
 	call WRITE
-	pop ax
 	call byte_to_Hex
 	push ax
 	mov dl, ' '
@@ -86,7 +83,7 @@ exitProg PROC
 	int 21h
 	jmp exget
 	errchild:
-		lea dx, st_docher_ctrlc
+		lea dx, st_docher_uspeh
 		call WRITE
 	exget:
 		ret
