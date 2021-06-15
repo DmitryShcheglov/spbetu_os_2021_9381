@@ -14,8 +14,8 @@ git remote add YudjinSud                 https://github.com/YudjinSud/spbetu_os_
 git remote add Dmitrydavka               https://github.com/Dmitrydavka/spbetu_os_2021_9381.git        # Давыдов
 git remote add PribylovNikita            https://github.com/PribylovNikita/spbetu_os_2021_9381.git     # Прибылов
 git remote add DerzoMelon                https://github.com/DerzoMelon/spbetu_os_2021_9381.git         # Авдеев
-#git remote add                           https://github.com//spbetu_os_2021_9381.git                  # 
-#git remote add                           https://github.com//spbetu_os_2021_9381.git                  # 
-#git remote add                           https://github.com//spbetu_os_2021_9381.git                  # 
+git remote add VladimirLyubimov          https://github.com/VladimirLyubimov/spbetu_os_2021_9381.git   # Любимов
+git remote add elek34ka                  https://github.com/elek34ka/spbetu_os_2021_9381.git           # Фоминенко
+git remote add SimonGyrin                https://github.com/SimonGyrin/spbetu_os_2021_9381.git         # Гурин
 #git remote add                           https://github.com//spbetu_os_2021_9381.git                  # 
 #git remote add                           https://github.com//spbetu_os_2021_9381.git                  # 
