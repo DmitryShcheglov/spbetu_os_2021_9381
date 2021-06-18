@@ -3,43 +3,43 @@ TESTPC SEGMENT
 		ORG 100H
 START: 	JMP	BEGIN
 
-;ДАННЫЕ
+;Р”РђРќРќР«Р•
 PC_Type			db	'PC Type:  ', 0dh, 0ah,'$'
 Mod_numb		db	'Modification number:  .  ', 0dh, 0ah,'$'
 OEM				db	'OEM:   ', 0dh, 0ah, '$'
 S_numb	    db	'Serial Number:       ', 0dh, 0ah, '$'
 
-;ПРОЦЕДУРЫ
-;печать строки
+;РџР РћР¦Р•Р”РЈР Р«
+;РїРµС‡Р°С‚СЊ СЃС‚СЂРѕРєРё
 PRINT_STRING PROC near
 		mov 	ah, 09h
 		int		21h
 		ret
 PRINT_STRING ENDP
 
-;перевод десятичной цифры в код символа
+;РїРµСЂРµРІРѕРґ РґРµСЃСЏС‚РёС‡РЅРѕР№ С†РёС„СЂС‹ РІ РєРѕРґ СЃРёРјРІРѕР»Р°
 TETR_TO_HEX		PROC	near
-		and		al, 0fh ;логическое умножение всех пар битов
+		and		al, 0fh ;Р»РѕРіРёС‡РµСЃРєРѕРµ СѓРјРЅРѕР¶РµРЅРёРµ РІСЃРµС… РїР°СЂ Р±РёС‚РѕРІ
 		cmp		al, 09
-		jbe		NEXT ;Переход если ниже или равно
+		jbe		NEXT ;РџРµСЂРµС…РѕРґ РµСЃР»Рё РЅРёР¶Рµ РёР»Рё СЂР°РІРЅРѕ
 		add		al, 07
 NEXT:	add		al, 30h
 		ret
 TETR_TO_HEX		ENDP
-;байт в AL переводится в два символа шестнадцетиричного числа в AX
+;Р±Р°Р№С‚ РІ AL РїРµСЂРµРІРѕРґРёС‚СЃСЏ РІ РґРІР° СЃРёРјРІРѕР»Р° С€РµСЃС‚РЅР°РґС†РµС‚РёСЂРёС‡РЅРѕРіРѕ С‡РёСЃР»Р° РІ AX
 BYTE_TO_HEX		PROC near
 		push	cx
 		mov		al, ah
 		call	TETR_TO_HEX
 		xchg	al, ah
 		mov	cl, 4
-		shr	al, cl ;логический сдвиг вправо
+		shr	al, cl ;Р»РѕРіРёС‡РµСЃРєРёР№ СЃРґРІРёРі РІРїСЂР°РІРѕ
 		call	TETR_TO_HEX     
 		pop	cx 			
 		ret
 BYTE_TO_HEX		ENDP
 
-;в АХ - число, DI - адрес последнего символа
+;РІ РђРҐ - С‡РёСЃР»Рѕ, DI - Р°РґСЂРµСЃ РїРѕСЃР»РµРґРЅРµРіРѕ СЃРёРјРІРѕР»Р°
 WRD_TO_HEX		PROC	near
 		push	bx
 		mov	bh, ah
@@ -58,8 +58,8 @@ WRD_TO_HEX		PROC	near
 		ret
 WRD_TO_HEX		ENDP
 
-;перевод байта 16 с.с в символьный код 10 с.с
-;si - адрес поля младшей цифры
+;РїРµСЂРµРІРѕРґ Р±Р°Р№С‚Р° 16 СЃ.СЃ РІ СЃРёРјРІРѕР»СЊРЅС‹Р№ РєРѕРґ 10 СЃ.СЃ
+;si - Р°РґСЂРµСЃ РїРѕР»СЏ РјР»Р°РґС€РµР№ С†РёС„СЂС‹
 BYTE_TO_DEC		PROC	near
 		push	cx
 		push	dx
@@ -95,7 +95,7 @@ BEGIN:
 		mov 	ah, al
 		call	BYTE_TO_HEX
 		lea		bx, PC_Type
-		mov 	[bx + 9], ax; смещение на количество символов
+		mov 	[bx + 9], ax; СЃРјРµС‰РµРЅРёРµ РЅР° РєРѕР»РёС‡РµСЃС‚РІРѕ СЃРёРјРІРѕР»РѕРІ
 		pop		ax
 		pop 	bx
 		pop 	es
