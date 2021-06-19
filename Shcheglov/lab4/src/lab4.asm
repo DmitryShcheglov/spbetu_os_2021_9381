@@ -61,7 +61,7 @@ interrupt_loop:
 	jne number
 	mov AH, 30h
 	mov [SI+BP], AH
-    loop iterrapt_loop 
+    loop interrupt_loop 
     
 number:
     pop BP
